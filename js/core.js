@@ -104,6 +104,12 @@ const subtitle=document.getElementById('pageSubtitle'); if(subtitle) subtitle.te
 const mt=document.getElementById('mobilePageTitle'); if(mt) mt.textContent=meta[0];
 renderTopActions();
 renderView(view);
+requestAnimationFrame(()=>{
+  const main=document.querySelector('.main');
+  if(isMobileLayout() && main && typeof main.scrollTo==='function') main.scrollTo({top:0,left:0,behavior:'auto'});
+  else window.scrollTo(0,0);
+  if(typeof updateMobileHeaderMetrics==='function') updateMobileHeaderMetrics();
+});
 }
 document.querySelectorAll('.nav button').forEach(b=>b.addEventListener('click',()=>navTo(b.dataset.view)));
 function renderAll(){renderTopActions();renderView(activeView)}
