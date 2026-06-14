@@ -2130,3 +2130,41 @@ body[data-theme="black"] .project-mobile-meta .mini-box{
     --mobile-header-h:calc(60px + env(safe-area-inset-top,0px));
   }
 }
+
+
+/* =========================================================
+ v3.9.19 — mobile project quick actions
+ Restores project-level actions on phones because the desktop topbar
+ is intentionally hidden in mobile layout.
+ ========================================================= */
+.mobile-project-actions{
+  display:none;
+}
+@media(max-width:820px){
+  #view-projects .mobile-project-actions{
+    display:grid!important;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+    margin-top:14px;
+    width:100%;
+  }
+  #view-projects .mobile-project-actions .btn{
+    justify-content:center;
+    width:100%;
+    min-height:44px;
+    padding:11px 10px;
+    white-space:normal;
+    text-align:center;
+    line-height:1.22;
+  }
+}
+@media(max-width:360px){
+  #view-projects .mobile-project-actions{
+    grid-template-columns:1fr;
+  }
+}
+@media(min-width:821px){
+  #view-projects .mobile-project-actions{
+    display:none!important;
+  }
+}
