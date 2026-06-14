@@ -1830,3 +1830,68 @@ body[data-theme="black"] .project-mobile-meta .mini-box{
   .nav-overlay{top:calc(64px + env(safe-area-inset-top,0px))!important;height:calc(100dvh - 64px - env(safe-area-inset-top,0px))!important;}
   .sidebar{top:calc(64px + env(safe-area-inset-top,0px))!important;height:calc(100dvh - 64px - env(safe-area-inset-top,0px))!important;max-height:calc(100dvh - 64px - env(safe-area-inset-top,0px))!important;}
 }
+
+
+/* =========================================================
+ v3.9.15 — mobile projects + hamburger exact fix
+ Fixes: desktop project table was visible above mobile card because a
+ later .table-wrap rule overrode display:none. Also replaces the text
+ hamburger with centered CSS lines to avoid Safari font misalignment.
+ ========================================================= */
+@media(max-width:820px){
+  #view-projects .projects-desktop-table,
+  #view-projects .projects-desktop-table.table-wrap{
+    display:none!important;
+    visibility:hidden!important;
+    height:0!important;
+    min-height:0!important;
+    max-height:0!important;
+    overflow:hidden!important;
+    margin:0!important;
+    padding:0!important;
+    border:0!important;
+  }
+  #view-projects .projects-mobile-list{
+    display:grid!important;
+    gap:12px!important;
+    width:100%!important;
+  }
+  #view-projects .card:has(.projects-mobile-list){
+    overflow:visible!important;
+  }
+  .mobile-menu-btn{
+    display:inline-flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    text-align:center!important;
+    padding:0!important;
+    font-size:0!important;
+    line-height:0!important;
+    aspect-ratio:1/1!important;
+  }
+  .mobile-menu-btn::before{
+    content:""!important;
+    display:block!important;
+    width:20px!important;
+    height:2.4px!important;
+    border-radius:999px!important;
+    background:currentColor!important;
+    box-shadow:0 -7px 0 currentColor, 0 7px 0 currentColor!important;
+    transform:none!important;
+  }
+  .mobile-menu-btn:active::before{
+    transform:scale(.96)!important;
+  }
+}
+@media(min-width:821px){
+  #view-projects .projects-mobile-list{
+    display:none!important;
+  }
+}
+@media(max-width:420px){
+  .mobile-menu-btn::before{
+    width:19px!important;
+    height:2.3px!important;
+    box-shadow:0 -6.5px 0 currentColor, 0 6.5px 0 currentColor!important;
+  }
+}
