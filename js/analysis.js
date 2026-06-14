@@ -8,4 +8,10 @@ ${renderStrategyWorkbench(activeStrategyType)}
 `;
 }
 function openKpiEditor(){navTo('project'); setTimeout(()=>document.querySelector('#view-project')?.scrollIntoView({behavior:'smooth'}),50)}
-function copyText(text){navigator.clipboard?.writeText(text); showToast('Скопировано')}
+async function copyText(text){
+try{
+if(navigator.clipboard?.writeText){await navigator.clipboard.writeText(String(text||'')); showToast('Скопировано'); return;}
+}catch(e){}
+try{const ta=document.createElement('textarea'); ta.value=String(text||''); ta.setAttribute('readonly',''); ta.style.position='fixed'; ta.style.left='-9999px'; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); showToast('Скопировано');}
+catch(e){showToast('Не удалось скопировать автоматически');}
+}

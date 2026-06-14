@@ -1,3 +1,2 @@
-Agency Brief Systems v3.9.15
-
-Upload all files to GitHub repository root. Open with ?v=3915 to bypass mobile browser cache.
+Загрузите эти файлы в корень репозитория GitHub Pages.
+После загрузки откройте сайт с параметром ?v=3916, чтобы сбросить кэш Safari.

@@ -5,9 +5,12 @@ return files.map(f=>`<div class="file-card"><div><div class="file-name">${esc(f.
 }
 function openFilesDb(){
 return new Promise((resolve,reject)=>{
+try{
+if(!window.indexedDB) throw new Error('IndexedDB недоступен');
 const req=indexedDB.open('AgencyBriefSystemsFiles',1);
 req.onupgradeneeded=e=>{const db=e.target.result; if(!db.objectStoreNames.contains('files')) db.createObjectStore('files',{keyPath:'id'});};
-req.onsuccess=()=>resolve(req.result); req.onerror=()=>reject(req.error);
+req.onsuccess=()=>resolve(req.result); req.onerror=()=>reject(req.error||new Error('Не удалось открыть IndexedDB'));
+}catch(e){reject(e)}
 });
 }
 async function putFileRecord(record){const db=await openFilesDb(); return new Promise((resolve,reject)=>{const tx=db.transaction('files','readwrite'); tx.objectStore('files').put(record); tx.oncomplete=()=>resolve(); tx.onerror=()=>reject(tx.error);});}
@@ -34,17 +37,21 @@ tx.onerror=()=>reject(tx.error);
 async function removeFileRecord(id){const db=await openFilesDb(); return new Promise((resolve,reject)=>{const tx=db.transaction('files','readwrite'); tx.objectStore('files').delete(id); tx.oncomplete=()=>resolve(); tx.onerror=()=>reject(tx.error);});}
 async function addProjectFiles(fileList){
 const p=currentProject(); if(!p || !fileList?.length)return; p.files=p.files||[];
+try{
 for(const file of Array.from(fileList)){
 const id='f_'+Date.now()+'_'+Math.random().toString(16).slice(2);
 await putFileRecord({id,projectId:p.id,name:file.name,type:file.type||'application/octet-stream',size:file.size,date:today(),blob:file});
 p.files.unshift({id,name:file.name,type:file.type||'файл',size:file.size,date:today()});
 }
 p.updatedAt=today(); saveStateNow(); renderProject(); showToast('Файлы добавлены в проект');
+}catch(e){console.error(e); showToast('Браузер заблокировал хранение файлов. Откройте сайт в Safari/Chrome.');}
 }
 async function downloadProjectFile(id){
+try{
 const rec=await getFileRecord(id); if(!rec){showToast('Файл не найден в хранилище браузера');return;}
 const a=document.createElement('a'); a.href=URL.createObjectURL(rec.blob); a.download=rec.name||'file'; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+}catch(e){console.error(e); showToast('Не удалось скачать файл: '+(e.message||e));}
 }
 async function deleteProjectFile(id){
-if((state.settings.ui?.confirmDelete)!==false && !confirm('Удалить файл из проекта?'))return; const p=currentProject(); if(!p)return; p.files=(p.files||[]).filter(f=>f.id!==id); await removeFileRecord(id); p.updatedAt=today(); saveStateNow(); renderProject(); showToast('Файл удален');
+if((state.settings.ui?.confirmDelete)!==false && !confirm('Удалить файл из проекта?'))return; const p=currentProject(); if(!p)return; p.files=(p.files||[]).filter(f=>f.id!==id); try{await removeFileRecord(id);}catch(e){console.warn('File remove failed',e)} p.updatedAt=today(); saveStateNow(); renderProject(); showToast('Файл удален');
 }

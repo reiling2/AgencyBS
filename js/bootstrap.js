@@ -11,9 +11,21 @@ let activeSiteTab = 'overview';
 
 function toggleMobileNav(){
 document.body.classList.toggle('mobile-nav-open');
+const btn=document.querySelector('.mobile-menu-btn');
+if(btn) btn.setAttribute('aria-expanded', document.body.classList.contains('mobile-nav-open') ? 'true' : 'false');
 }
 function closeMobileNav(){
 document.body.classList.remove('mobile-nav-open');
+const btn=document.querySelector('.mobile-menu-btn');
+if(btn) btn.setAttribute('aria-expanded','false');
 }
-window.addEventListener('resize',()=>{if(window.innerWidth>820)closeMobileNav();});
+let lastMobileLayout = isMobileLayout();
+window.addEventListener('resize',()=>{
+const nowMobile = isMobileLayout();
+if(window.innerWidth>820) closeMobileNav();
+if(nowMobile !== lastMobileLayout){
+  lastMobileLayout = nowMobile;
+  renderAll();
+}
+});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeMobileNav();});

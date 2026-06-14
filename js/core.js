@@ -11,6 +11,16 @@ catch(e){STORAGE_AVAILABLE=false; console.warn('Storage save unavailable:', e &&
 function storageNotice(){
 return STORAGE_AVAILABLE ? '' : '<div class="item warn"><b>Локальное сохранение недоступно</b><br><span class="small muted">Откройте файл через браузер Safari/Chrome или используйте собранный HTML на хостинге. Сейчас данные работают как временная сессия.</span></div>';
 }
+function isMobileLayout(){
+try{return window.matchMedia ? window.matchMedia('(max-width: 820px)').matches : window.innerWidth <= 820;}
+catch(e){return false;}
+}
+function renderInlineError(view,err){
+const root=document.getElementById('view-'+view) || document.querySelector('.view.active');
+if(!root) return;
+const msg=(err && (err.message || err.stack)) ? String(err.message || err.stack) : String(err);
+root.innerHTML='<div class="mobile-safe-error"><b>Раздел не смог отрисоваться.</b><br>Ошибка: '+esc(msg).slice(0,800)+'</div>';
+}
 
 function freshProject(title='Новый проект', niche=''){
 const id='p_'+Date.now()+'_'+Math.random().toString(16).slice(2);
@@ -67,6 +77,7 @@ function saveStateNow(){return safeStorageSet(STORE_KEY, JSON.stringify(state));
 function currentProject(){return state.projects.find(p=>p.id===state.activeProjectId)||state.projects[0];}
 function setCurrent(id){state.activeProjectId=id; saveStateNow(); renderAll(); showToast('Проект открыт');}
 function esc(s){return String(s??'').replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));}
+function escAttr(s){return String(s??'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\"/g,'&quot;').replace(/[\n\r<>]/g,'');}
 function nl2br(s){return esc(s).replace(/\n/g,'<br>')}
 function number(v){return Number(String(v??'').replace(/[^0-9.,-]/g,'').replace(',','.'))||0;}
 function fmt(n){return Math.round(number(n)).toLocaleString('ru-RU')}
@@ -74,16 +85,33 @@ function pct(n){return Math.round(number(n))+'%'}
 function clamp(n,min=0,max=100){return Math.max(min,Math.min(max,n))}
 function avg(arr){return arr.length?arr.reduce((a,b)=>a+b,0)/arr.length:0}
 function statusPill(status){const map={'Бриф':'gray','Автоанализ':'purple','Запуск':'amber','В работе':'green','Отчет':'green'};return `<span class="pill ${map[status]||'gray'}">${esc(status||'Бриф')}</span>`}
-function showToast(text){const t=document.getElementById('toast');t.textContent=text;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2600)}
-function closeModal(id){document.getElementById(id).classList.remove('open')}
-function openNewProjectModal(){document.getElementById('projectModal').classList.add('open')}
-function createProject(){const title=document.getElementById('newTitle').value.trim()||'Новый проект';const niche=document.getElementById('newNiche').value.trim();const p=freshProject(title,niche);p.status=document.getElementById('newStatus').value;state.projects.unshift(p);state.activeProjectId=p.id;saveStateNow();closeModal('projectModal');renderAll();showToast('Проект создан')}
+function showToast(text){const t=document.getElementById('toast'); if(!t){console.warn(text); return;} t.textContent=text;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2600)}
+function closeModal(id){const m=document.getElementById(id); if(m)m.classList.remove('open')}
+function openNewProjectModal(){const m=document.getElementById('projectModal'); if(m)m.classList.add('open')}
+function createProject(){const titleEl=document.getElementById('newTitle');const nicheEl=document.getElementById('newNiche');const statusEl=document.getElementById('newStatus');const title=(titleEl?.value||'').trim()||'Новый проект';const niche=(nicheEl?.value||'').trim();const p=freshProject(title,niche);p.status=statusEl?.value||state.settings?.defaultProjectStatus||'Бриф';state.projects.unshift(p);state.activeProjectId=p.id;saveStateNow();closeModal('projectModal');renderAll();showToast('Проект создан')}
 
 function navTo(view){
-closeMobileNav();activeView=view;document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.view===view));document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));document.getElementById('view-'+view).classList.add('active');document.getElementById('pageTitle').textContent=PAGE_META[view][0];document.getElementById('pageSubtitle').textContent=PAGE_META[view][1];const mt=document.getElementById('mobilePageTitle');if(mt)mt.textContent=PAGE_META[view][0];renderTopActions();renderView(view);}
+const meta=PAGE_META[view] || PAGE_META.projects;
+if(!PAGE_META[view]) view='projects';
+closeMobileNav();
+activeView=view;
+document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.view===view));
+document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+const target=document.getElementById('view-'+view);
+if(target) target.classList.add('active');
+const title=document.getElementById('pageTitle'); if(title) title.textContent=meta[0];
+const subtitle=document.getElementById('pageSubtitle'); if(subtitle) subtitle.textContent=meta[1];
+const mt=document.getElementById('mobilePageTitle'); if(mt) mt.textContent=meta[0];
+renderTopActions();
+renderView(view);
+}
 document.querySelectorAll('.nav button').forEach(b=>b.addEventListener('click',()=>navTo(b.dataset.view)));
 function renderAll(){renderTopActions();renderView(activeView)}
-function renderView(view){({projects:renderProjects,project:renderProject,brief:renderBrief,import:renderImport,analysis:renderAnalysis,report:renderReport,site:renderSite,settings:renderSettings}[view]||renderProjects)();}
+function renderView(view){
+const map={projects:renderProjects,project:renderProject,brief:renderBrief,import:renderImport,analysis:renderAnalysis,report:renderReport,site:renderSite,settings:renderSettings};
+try{(map[view]||renderProjects)();}
+catch(err){console.error('Render error in '+view, err); renderInlineError(view,err);}
+}
 
 function defaultWeights(){return {demand:35,balance:25,economics:22,client:10,materials:8};}
 function ensureState(){
