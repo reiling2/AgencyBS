@@ -112,6 +112,64 @@ if(!document.body.classList.contains('mobile-nav-open')) return;
 // Click/tap events still work, but touchmove/wheel cannot move the page or shell.
 if(e.cancelable) e.preventDefault();
 }
+
+
+/* v3.9.21 — mobile document overscroll guard.
+   iOS Safari and Telegram in-app browser can move fixed elements during
+   rubber-band overscroll at the top/bottom of the document. We block only
+   edge drags, so normal page scrolling and form interactions still work. */
+let mobileEdgeTouchStartY = 0;
+function isEditableMobileTarget(el){
+  return !!(el && el.closest && el.closest('input, textarea, select, [contenteditable="true"]'));
+}
+function isScrollableElement(el){
+  if(!el || el === document.body || el === document.documentElement) return false;
+  const st = window.getComputedStyle ? getComputedStyle(el) : null;
+  const oy = st ? (st.overflowY || st.overflow) : '';
+  return /(auto|scroll)/.test(oy) && el.scrollHeight > el.clientHeight + 1;
+}
+function nearestScrollableElement(el){
+  let cur = el;
+  while(cur && cur !== document.body && cur !== document.documentElement){
+    if(isScrollableElement(cur)) return cur;
+    cur = cur.parentElement;
+  }
+  return null;
+}
+function preventMobileRubberBandAtDocumentEdges(e){
+  if(!isMobileLayout()) return;
+  if(document.body.classList.contains('mobile-nav-open')) return;
+  if(!e.touches || e.touches.length !== 1) return;
+  if(isEditableMobileTarget(e.target)) return;
+  const currentY = e.touches[0].clientY;
+  const deltaY = currentY - mobileEdgeTouchStartY;
+  if(!deltaY) return;
+
+  const innerScroller = nearestScrollableElement(e.target);
+  if(innerScroller){
+    const atInnerTop = innerScroller.scrollTop <= 0;
+    const atInnerBottom = Math.ceil(innerScroller.scrollTop + innerScroller.clientHeight) >= innerScroller.scrollHeight;
+    if(!((atInnerTop && deltaY > 0) || (atInnerBottom && deltaY < 0))) return;
+  }
+
+  const se = document.scrollingElement || document.documentElement;
+  const scrollTop = Math.max(0, window.scrollY || se.scrollTop || document.documentElement.scrollTop || 0);
+  const viewportH = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+  const maxScroll = Math.max(0, se.scrollHeight - Math.ceil(viewportH || se.clientHeight || window.innerHeight));
+  const atTop = scrollTop <= 0;
+  const atBottom = scrollTop >= maxScroll - 2;
+
+  if((atTop && deltaY > 0) || (atBottom && deltaY < 0) || maxScroll <= 0){
+    if(e.cancelable) e.preventDefault();
+    updateMobileHeaderMetrics();
+  }
+}
+function storeMobileEdgeTouchStart(e){
+  if(!e.touches || !e.touches.length) return;
+  mobileEdgeTouchStartY = e.touches[0].clientY;
+  updateMobileHeaderMetrics();
+}
+
 let lastMobileLayout = isMobileLayout();
 window.addEventListener('resize',()=>{
 updateMobileHeaderMetrics();
@@ -131,4 +189,7 @@ if(window.visualViewport){
 }
 document.addEventListener('touchmove', blockPageScrollWhenDrawerOpen, {passive:false,capture:true});
 document.addEventListener('wheel', blockPageScrollWhenDrawerOpen, {passive:false,capture:true});
+
+document.addEventListener('touchstart', storeMobileEdgeTouchStart, {passive:true,capture:true});
+document.addEventListener('touchmove', preventMobileRubberBandAtDocumentEdges, {passive:false,capture:true});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeMobileNav();});
