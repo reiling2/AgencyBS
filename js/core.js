@@ -1,3 +1,17 @@
+
+let STORAGE_AVAILABLE = true;
+function safeStorageGet(key){
+try{return window.localStorage ? localStorage.getItem(key) : null;}
+catch(e){STORAGE_AVAILABLE=false; console.warn('Storage unavailable:', e && e.message ? e.message : e); return null;}
+}
+function safeStorageSet(key,value){
+try{if(!window.localStorage) return false; localStorage.setItem(key,value); STORAGE_AVAILABLE=true; return true;}
+catch(e){STORAGE_AVAILABLE=false; console.warn('Storage save unavailable:', e && e.message ? e.message : e); return false;}
+}
+function storageNotice(){
+return STORAGE_AVAILABLE ? '' : '<div class="item warn"><b>Локальное сохранение недоступно</b><br><span class="small muted">Откройте файл через браузер Safari/Chrome или используйте собранный HTML на хостинге. Сейчас данные работают как временная сессия.</span></div>';
+}
+
 function freshProject(title='Новый проект', niche=''){
 const id='p_'+Date.now()+'_'+Math.random().toString(16).slice(2);
 return {id,title,niche,status:'Бриф',createdAt:today(),updatedAt:today(),briefAnswers:{},services:[],competitors:[],marketUtp:[],usedUtp:[],pains:[],portrait:'',keywords:[],tasks:[],materials:{photo:'',video:'',reviews:'',logo:'',brandbook:'',price:''},kpi:{weeklyBudget:0,desiredOrdersWeek:0,targetLeadCost:0,leadToSale:0,avgCheck:0,margin:0},manual:{utps:'',hypotheses:'',ads:'',analysisNote:''},strategyBlocks:{utps:[],hypotheses:[],ads:[]},files:[],importLog:[]};
@@ -5,18 +19,18 @@ return {id,title,niche,status:'Бриф',createdAt:today(),updatedAt:today(),bri
 function today(){return new Date().toISOString().slice(0,10)}
 function loadState(){
 try{
-const raw=localStorage.getItem(STORE_KEY);
+const raw=safeStorageGet(STORE_KEY);
 if(raw){
   const parsed=JSON.parse(raw);
   if(parsed.projects?.length) return migrateState(parsed);
 }
 for(const key of LEGACY_STORE_KEYS){
-  const legacyRaw=localStorage.getItem(key);
+  const legacyRaw=safeStorageGet(key);
   if(legacyRaw){
     const legacy=JSON.parse(legacyRaw);
     if(legacy.projects?.length){
       legacy.schemaVersion = SCHEMA_VERSION;
-      localStorage.setItem(STORE_KEY, JSON.stringify(legacy));
+      safeStorageSet(STORE_KEY, JSON.stringify(legacy));
       return migrateState(legacy);
     }
   }
@@ -47,9 +61,9 @@ return data;
 let saveTimer=null;
 function saveState(){
 clearTimeout(saveTimer);
-saveTimer=setTimeout(()=>localStorage.setItem(STORE_KEY, JSON.stringify(state)),250);
+saveTimer=setTimeout(()=>safeStorageSet(STORE_KEY, JSON.stringify(state)),250);
 }
-function saveStateNow(){localStorage.setItem(STORE_KEY, JSON.stringify(state));}
+function saveStateNow(){return safeStorageSet(STORE_KEY, JSON.stringify(state));}
 function currentProject(){return state.projects.find(p=>p.id===state.activeProjectId)||state.projects[0];}
 function setCurrent(id){state.activeProjectId=id; saveStateNow(); renderAll(); showToast('Проект открыт');}
 function esc(s){return String(s??'').replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));}
@@ -66,15 +80,8 @@ function openNewProjectModal(){document.getElementById('projectModal').classList
 function createProject(){const title=document.getElementById('newTitle').value.trim()||'Новый проект';const niche=document.getElementById('newNiche').value.trim();const p=freshProject(title,niche);p.status=document.getElementById('newStatus').value;state.projects.unshift(p);state.activeProjectId=p.id;saveStateNow();closeModal('projectModal');renderAll();showToast('Проект создан')}
 
 function navTo(view){
-// #region agent log
-fetch('http://127.0.0.1:7897/ingest/55c3160c-c4e5-4b8f-ad85-ca588325d327',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'0fa404'},body:JSON.stringify({sessionId:'0fa404',runId:'pre-fix',hypothesisId:'D',location:'core.js:navTo',message:'navTo called',data:{view,hasCloseMobileNav:typeof closeMobileNav==='function'},timestamp:Date.now()})}).catch(()=>{});
-// #endregion
 closeMobileNav();activeView=view;document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.view===view));document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));document.getElementById('view-'+view).classList.add('active');document.getElementById('pageTitle').textContent=PAGE_META[view][0];document.getElementById('pageSubtitle').textContent=PAGE_META[view][1];const mt=document.getElementById('mobilePageTitle');if(mt)mt.textContent=PAGE_META[view][0];renderTopActions();renderView(view);}
 document.querySelectorAll('.nav button').forEach(b=>b.addEventListener('click',()=>navTo(b.dataset.view)));
-// #region agent log
-fetch('http://127.0.0.1:7897/ingest/55c3160c-c4e5-4b8f-ad85-ca588325d327',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'0fa404'},body:JSON.stringify({sessionId:'0fa404',runId:'pre-fix',hypothesisId:'B',location:'core.js:69',message:'nav listeners attached',data:{navButtonCount:document.querySelectorAll('.nav button').length},timestamp:Date.now()})}).catch(()=>{});
-// #endregion
-
 function renderAll(){renderTopActions();renderView(activeView)}
 function renderView(view){({projects:renderProjects,project:renderProject,brief:renderBrief,import:renderImport,analysis:renderAnalysis,report:renderReport,site:renderSite,settings:renderSettings}[view]||renderProjects)();}
 

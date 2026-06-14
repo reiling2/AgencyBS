@@ -1304,3 +1304,529 @@ flex:1 0 auto;
 text-align:left;
 }
 }
+
+
+/* =========================================================
+ v3.9.11 — stronger phone layout and no-blank fallback
+ ========================================================= */
+.app-loading{
+  margin-top:16px;
+}
+.no-js-warning{
+  margin:16px;
+  padding:16px;
+  border:1px solid #fecaca;
+  background:#fef2f2;
+  color:#991b1b;
+  border-radius:18px;
+  font-family:var(--font-system, Arial, sans-serif);
+}
+.projects-mobile-list{display:none;}
+.projects-desktop-table{display:block;}
+.project-mobile-card{
+  display:grid;
+  gap:12px;
+  border:1px solid var(--line);
+  border-radius:18px;
+  background:var(--panel);
+  padding:14px;
+  cursor:pointer;
+}
+.project-mobile-card:active{transform:scale(.995);}
+.project-mobile-title{
+  font-size:16px;
+  font-weight:600;
+  line-height:1.3;
+  letter-spacing:-.01em;
+}
+.project-mobile-meta{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+}
+.project-mobile-meta .mini-box{
+  border:1px solid var(--line);
+  border-radius:14px;
+  background:var(--panel2);
+  padding:10px;
+  min-width:0;
+}
+.project-mobile-meta .mini-label{
+  font-size:11.5px;
+  color:var(--muted);
+  line-height:1.25;
+}
+.project-mobile-meta .mini-value{
+  margin-top:3px;
+  font-weight:600;
+  line-height:1.25;
+  word-break:break-word;
+}
+.mobile-safe-error{
+  border:1px solid #fecaca;
+  background:#fef2f2;
+  color:#991b1b;
+  border-radius:18px;
+  padding:16px;
+  margin-top:16px;
+  white-space:pre-wrap;
+}
+@media(max-width:820px){
+  .topbar{display:none;}
+  .main{padding-top:calc(78px + env(safe-area-inset-top));}
+  .projects-desktop-table{display:none!important;}
+  .projects-mobile-list{display:grid;gap:12px;}
+  .project-mobile-meta{grid-template-columns:1fr 1fr;}
+  .project-mobile-card .actions{overflow:visible;flex-wrap:wrap;width:100%;}
+  .project-mobile-card .actions .btn{flex:1 1 auto;justify-content:center;}
+  .table-wrap table{min-width:540px;}
+  .table-wrap.compact-mobile table{min-width:0;}
+  .field{margin-bottom:10px;}
+  input,textarea,select{max-width:100%;}
+  .copy-area{word-break:break-word;}
+}
+@media(max-width:420px){
+  .mobile-header{height:60px;}
+  .mobile-brand .logo{width:34px;height:34px;border-radius:12px;}
+  .mobile-title b{font-size:14px;max-width:52vw;}
+  .mobile-title span{font-size:11.5px;max-width:52vw;}
+  .mobile-menu-btn{width:40px;height:40px;border-radius:13px;}
+  .main{padding-top:calc(74px + env(safe-area-inset-top));}
+  .project-mobile-meta{grid-template-columns:1fr;}
+  .project-mobile-card{padding:12px;border-radius:16px;}
+  .brief-answer{min-height:88px;}
+  .table-wrap table{min-width:500px;}
+}
+body[data-theme="black"] .project-mobile-card,
+body[data-theme="black"] .project-mobile-meta .mini-box{
+  background:#0e1624;
+  border-color:#223045;
+}
+
+
+/* =========================================================
+ v3.9.13 — mobile header and drawer alignment fix
+ Fixes: fixed header no longer covers page content, hamburger stays
+ in the top-right safe area, drawer starts below the header.
+ ========================================================= */
+@media(max-width:820px){
+  .mobile-header{
+    position:sticky!important;
+    top:0!important;
+    left:auto!important;
+    right:auto!important;
+    width:100%!important;
+    height:auto!important;
+    min-height:64px!important;
+    padding-top:calc(10px + env(safe-area-inset-top,0px))!important;
+    padding-right:max(12px, env(safe-area-inset-right,0px))!important;
+    padding-bottom:10px!important;
+    padding-left:max(12px, env(safe-area-inset-left,0px))!important;
+    z-index:1300!important;
+    box-shadow:0 10px 28px rgba(15,23,42,.08)!important;
+  }
+  .mobile-brand{flex:1 1 auto!important;min-width:0!important;overflow:hidden!important;padding-right:8px!important;}
+  .mobile-title{flex:1 1 auto!important;min-width:0!important;overflow:hidden!important;}
+  .mobile-title b,.mobile-title span{max-width:calc(100vw - 128px)!important;}
+  .mobile-menu-btn{position:relative!important;top:auto!important;right:auto!important;margin-left:auto!important;flex:0 0 44px!important;width:44px!important;height:44px!important;border-radius:16px!important;z-index:1310!important;}
+  body.mobile-nav-open .mobile-menu-btn{background:#111827!important;border-color:#111827!important;color:#fff!important;}
+  .main{padding-top:14px!important;}
+  .topbar{display:none!important;}
+  .nav-overlay{top:calc(64px + env(safe-area-inset-top,0px))!important;height:calc(100dvh - 64px - env(safe-area-inset-top,0px))!important;z-index:1250!important;}
+  .sidebar{top:calc(64px + env(safe-area-inset-top,0px))!important;bottom:auto!important;height:calc(100dvh - 64px - env(safe-area-inset-top,0px))!important;max-height:calc(100dvh - 64px - env(safe-area-inset-top,0px))!important;z-index:1260!important;padding-top:14px!important;padding-bottom:calc(18px + env(safe-area-inset-bottom,0px))!important;overflow-y:auto!important;}
+  .sidebar .brand{display:none!important;}
+  .nav button{min-height:52px!important;font-size:15.5px!important;border-radius:16px!important;}
+}
+@media(max-width:420px){
+  .mobile-header{min-height:60px!important;padding-right:max(10px, env(safe-area-inset-right,0px))!important;padding-left:max(10px, env(safe-area-inset-left,0px))!important;}
+  .mobile-title b,.mobile-title span{max-width:calc(100vw - 118px)!important;}
+  .mobile-menu-btn{flex-basis:42px!important;width:42px!important;height:42px!important;border-radius:15px!important;}
+  .main{padding-top:12px!important;}
+  .nav-overlay{top:calc(60px + env(safe-area-inset-top,0px))!important;height:calc(100dvh - 60px - env(safe-area-inset-top,0px))!important;}
+  .sidebar{top:calc(60px + env(safe-area-inset-top,0px))!important;height:calc(100dvh - 60px - env(safe-area-inset-top,0px))!important;max-height:calc(100dvh - 60px - env(safe-area-inset-top,0px))!important;width:min(82vw,320px)!important;}
+}
+
+/* =========================================================
+ v3.9.14 — professional responsive hardening
+ Goal: every section must stay inside the phone viewport;
+ only data tables may scroll horizontally inside their own box.
+ ========================================================= */
+@media(max-width:820px){
+  html,body{
+    width:100%!important;
+    max-width:100%!important;
+    overflow-x:hidden!important;
+  }
+  body{
+    font-size:14.5px;
+    line-height:1.55;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .app,
+  .main,
+  .view,
+  .view.active,
+  .grid,
+  .grid.cols-2,
+  .grid.cols-3,
+  .grid.cols-4,
+  .brief-layout,
+  .brief-minimal,
+  .brief-section-clean,
+  .site-two,
+  .site-kpi-grid,
+  .site-source-grid,
+  .site-stat-grid,
+  .site-table-grid,
+  .service-grid,
+  .settings-grid{
+    width:100%!important;
+    max-width:100%!important;
+    min-width:0!important;
+  }
+  .grid,
+  .grid.cols-2,
+  .grid.cols-3,
+  .grid.cols-4,
+  .brief-controls-clean,
+  .settings-grid,
+  .site-two,
+  .site-kpi-grid,
+  .site-source-grid,
+  .site-stat-grid,
+  .site-table-grid,
+  .service-grid{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr)!important;
+  }
+  .grid > *,
+  .site-two > *,
+  .site-kpi-grid > *,
+  .site-source-grid > *,
+  .site-stat-grid > *,
+  .site-table-grid > *,
+  .settings-grid > *,
+  .service-grid > *,
+  .brief-controls-clean > *,
+  .brief-minimal > *,
+  .card > *,
+  .split > *{
+    min-width:0!important;
+    max-width:100%!important;
+  }
+  .main{
+    padding-left:12px!important;
+    padding-right:12px!important;
+    padding-bottom:calc(28px + env(safe-area-inset-bottom,0px))!important;
+  }
+  .card,
+  .metric,
+  .summary-box,
+  .item,
+  .project-mobile-card,
+  .site-source-card,
+  .site-stat-card,
+  .report,
+  .modal-card,
+  .editable-block,
+  .edit-row,
+  .file-card,
+  .toggle-row,
+  .dropzone{
+    width:100%!important;
+    max-width:100%!important;
+    min-width:0!important;
+  }
+  .card,
+  .metric,
+  .summary-box,
+  .item,
+  .site-source-card,
+  .site-stat-card,
+  .report,
+  .project-mobile-card{
+    overflow:hidden!important;
+  }
+  h1,h2,h3,p,li,
+  .muted,.small,.tiny,
+  .label,.num,
+  .field label,
+  .project-mobile-title,
+  .project-mobile-meta .mini-value,
+  .file-card .file-name,
+  .file-card .file-meta,
+  .copy-area,
+  .hint,
+  .site-connect-code,
+  .summary-box,
+  .item,
+  .report{
+    overflow-wrap:anywhere;
+    word-break:normal;
+  }
+  .split{
+    width:100%!important;
+    display:flex!important;
+    flex-wrap:wrap!important;
+    align-items:flex-start!important;
+    gap:10px!important;
+  }
+  .split > h2,
+  .split > h3,
+  .split > div:first-child{
+    flex:1 1 180px!important;
+  }
+  .split > .pill,
+  .split > .actions{
+    flex:0 1 auto!important;
+  }
+  .pill{
+    max-width:100%!important;
+    white-space:normal!important;
+    text-align:center;
+    justify-content:center;
+  }
+  .actions{
+    max-width:100%!important;
+    min-width:0!important;
+    overflow-x:auto!important;
+    overflow-y:hidden!important;
+    -webkit-overflow-scrolling:touch;
+    scrollbar-width:none;
+  }
+  .actions::-webkit-scrollbar,
+  .site-tabs::-webkit-scrollbar,
+  .analysis-tabs::-webkit-scrollbar,
+  .subnav::-webkit-scrollbar{
+    display:none;
+  }
+  .actions .btn{
+    flex:0 0 auto!important;
+    max-width:92vw!important;
+  }
+  .btn{
+    min-width:0!important;
+    justify-content:center;
+    touch-action:manipulation;
+  }
+  input,textarea,select,
+  .field input,.field textarea,.field select,
+  .searchbar input,.searchbar select,
+  .brief-controls-clean input,.brief-controls-clean select,
+  .brief-answer{
+    width:100%!important;
+    max-width:100%!important;
+    min-width:0!important;
+    box-sizing:border-box!important;
+  }
+  .searchbar,
+  .brief-controls-clean{
+    width:100%!important;
+    max-width:100%!important;
+  }
+  .table-wrap{
+    position:relative;
+    display:block!important;
+    width:100%!important;
+    max-width:100%!important;
+    min-width:0!important;
+    overflow-x:auto!important;
+    overflow-y:hidden;
+    -webkit-overflow-scrolling:touch;
+    border-radius:16px;
+  }
+  .table-wrap table{
+    width:max-content!important;
+    min-width:min(560px, 150vw)!important;
+    max-width:none!important;
+    table-layout:auto!important;
+  }
+  .table-wrap th,
+  .table-wrap td{
+    white-space:normal!important;
+    overflow-wrap:anywhere;
+  }
+  .copy-area,
+  .site-connect-code{
+    width:100%!important;
+    max-width:100%!important;
+    overflow:auto!important;
+    white-space:pre-wrap!important;
+  }
+  .dropzone{
+    display:grid!important;
+    place-items:center;
+    text-align:center;
+    padding:22px 14px!important;
+  }
+  .dropzone h3,
+  .dropzone p,
+  .file-help,
+  .file-help div{
+    width:100%!important;
+    max-width:100%!important;
+    min-width:0!important;
+    overflow-wrap:anywhere;
+  }
+  .file-help{
+    overflow:hidden!important;
+  }
+  .file-card{
+    display:grid!important;
+    grid-template-columns:1fr!important;
+    align-items:start!important;
+  }
+  .file-card .actions{
+    width:100%!important;
+  }
+  .file-card .actions .btn{
+    flex:1 0 auto!important;
+  }
+  .brief-minimal-head,
+  .brief-head-right,
+  .brief-top-actions{
+    width:100%!important;
+    max-width:100%!important;
+    min-width:0!important;
+  }
+  .brief-top-actions{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) minmax(0,1.25fr)!important;
+    overflow:visible!important;
+  }
+  .brief-top-actions .btn{
+    width:100%!important;
+    max-width:100%!important;
+    padding-left:8px!important;
+    padding-right:8px!important;
+  }
+  .site-tabs,
+  .analysis-tabs,
+  .brief-tabs,
+  .subnav{
+    width:100%!important;
+    max-width:100%!important;
+    display:flex!important;
+    flex-wrap:nowrap!important;
+    gap:8px!important;
+    overflow-x:auto!important;
+    overflow-y:hidden!important;
+    -webkit-overflow-scrolling:touch;
+    padding-bottom:6px!important;
+  }
+  .site-tabs button,
+  .analysis-tab,
+  .brief-tab,
+  .subnav button{
+    flex:0 0 auto!important;
+    min-height:42px;
+  }
+  .site-funnel-row{
+    width:100%!important;
+    min-width:0!important;
+  }
+  .theme-picker,
+  .theme-card,
+  .theme-preview{
+    width:100%!important;
+    max-width:100%!important;
+    min-width:0!important;
+  }
+  .report{
+    margin:0!important;
+  }
+  .report h1{
+    font-size:25px!important;
+    line-height:1.18!important;
+  }
+  .report h2{
+    font-size:20px!important;
+  }
+  .modal-card{
+    width:100%!important;
+  }
+}
+
+@media(max-width:420px){
+  .main{
+    padding-left:10px!important;
+    padding-right:10px!important;
+  }
+  .card,
+  .metric,
+  .summary-box,
+  .item,
+  .project-mobile-card,
+  .site-source-card,
+  .site-stat-card,
+  .report{
+    border-radius:17px!important;
+    padding:12px!important;
+  }
+  .hgroup h1,
+  .card h2,
+  .brief-minimal-head h2,
+  .brief-section-title h2{
+    font-size:20px!important;
+  }
+  .metric .num{
+    font-size:24px!important;
+  }
+  .brief-top-actions{
+    gap:8px!important;
+  }
+  .brief-top-actions .btn{
+    font-size:13.5px!important;
+  }
+  .table-wrap table{
+    min-width:min(520px, 150vw)!important;
+  }
+}
+
+@media(max-width:350px){
+  .mobile-title b{font-size:13.5px!important;}
+  .mobile-title span{font-size:11px!important;}
+  .mobile-menu-btn{width:40px!important;height:40px!important;flex-basis:40px!important;}
+  .mobile-title b,.mobile-title span{max-width:calc(100vw - 112px)!important;}
+  .btn{font-size:13px!important;}
+  .brief-top-actions{
+    grid-template-columns:1fr!important;
+  }
+  .table-wrap table{
+    min-width:480px!important;
+  }
+}
+
+/* v3.9.14b — visible mobile action rows inside cards */
+@media(max-width:820px){
+  .card > .actions,
+  .modal-card > .actions,
+  .file-card .actions,
+  .project-mobile-card .actions,
+  .report-actions,
+  .actions.no-print{
+    display:flex!important;
+    flex-wrap:wrap!important;
+    overflow:visible!important;
+    width:100%!important;
+    gap:8px!important;
+  }
+  .card > .actions .btn,
+  .modal-card > .actions .btn,
+  .file-card .actions .btn,
+  .project-mobile-card .actions .btn,
+  .actions.no-print .btn{
+    flex:1 1 150px!important;
+    max-width:100%!important;
+  }
+  .card > .actions[style*="justify-content:center"],
+  .actions.no-print[style*="justify-content:center"]{
+    justify-content:center!important;
+  }
+}
+
+/* v3.9.14c — exact drawer safe offset */
+@media(max-width:420px){
+  .nav-overlay{top:calc(64px + env(safe-area-inset-top,0px))!important;height:calc(100dvh - 64px - env(safe-area-inset-top,0px))!important;}
+  .sidebar{top:calc(64px + env(safe-area-inset-top,0px))!important;height:calc(100dvh - 64px - env(safe-area-inset-top,0px))!important;max-height:calc(100dvh - 64px - env(safe-area-inset-top,0px))!important;}
+}
