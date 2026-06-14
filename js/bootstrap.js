@@ -10,29 +10,50 @@ let activeStrategyType = 'utps';
 let activeSiteTab = 'overview';
 let mobileNavScrollY = 0;
 
+function mobileVisualViewport(){
+const vv=window.visualViewport;
+return {
+  top: vv ? Math.max(0, Math.round(vv.offsetTop || 0)) : 0,
+  height: vv ? Math.max(320, Math.round(vv.height || window.innerHeight || 640)) : Math.max(320, Math.round(window.innerHeight || 640))
+};
+}
+function syncMobileViewportVars(){
+const root=document.documentElement;
+const isSmall=window.matchMedia ? window.matchMedia('(max-width:820px)').matches : window.innerWidth<=820;
+if(!isSmall) return;
+const vv=mobileVisualViewport();
+root.style.setProperty('--mobile-vv-top', vv.top+'px');
+root.style.setProperty('--mobile-vvh', vv.height+'px');
+}
 function updateMobileHeaderMetrics(){
+syncMobileViewportVars();
 const header=document.querySelector('.mobile-header');
-const h=header ? Math.ceil(header.getBoundingClientRect().height) : 64;
-document.documentElement.style.setProperty('--mobile-header-h', (h||64)+'px');
+let h=header ? Math.ceil(header.getBoundingClientRect().height) : 64;
+if(!h || h<56 || h>120){ h = window.innerWidth<=420 ? 60 : 64; }
+document.documentElement.style.setProperty('--mobile-header-h', h+'px');
 }
 function setMobileNavButtonState(open){
 const btn=document.querySelector('.mobile-menu-btn');
 if(btn) btn.setAttribute('aria-expanded', open ? 'true' : 'false');
 }
 function hardPinMobileDrawer(){
+updateMobileHeaderMetrics();
 const header=document.querySelector('.mobile-header');
 const sidebar=document.querySelector('.sidebar');
 const overlay=document.querySelector('.nav-overlay');
-const h=header ? Math.ceil(header.getBoundingClientRect().height) : 64;
-document.documentElement.style.setProperty('--mobile-header-h', h+'px');
+const rootStyle=getComputedStyle(document.documentElement);
+const h=Math.ceil(Number(rootStyle.getPropertyValue('--mobile-header-h').replace('px',''))||64);
+const vv=mobileVisualViewport();
+document.documentElement.style.setProperty('--mobile-vv-top', vv.top+'px');
+document.documentElement.style.setProperty('--mobile-vvh', vv.height+'px');
 if(header){
-  Object.assign(header.style,{position:'fixed',top:'0px',left:'0px',right:'0px',width:'100%',zIndex:'1700',transform:'translate3d(0,0,0)'});
+  Object.assign(header.style,{position:'fixed',top:vv.top+'px',left:'0px',right:'0px',width:'100vw',zIndex:'5200',transform:'translate3d(0,0,0)'});
 }
 if(overlay){
-  Object.assign(overlay.style,{position:'fixed',top:'0px',left:'0px',right:'0px',bottom:'0px',height:'100svh',zIndex:'1500'});
+  Object.assign(overlay.style,{position:'fixed',top:vv.top+'px',left:'0px',right:'0px',bottom:'auto',height:vv.height+'px',zIndex:'5050',transform:'translate3d(0,0,0)'});
 }
 if(sidebar){
-  Object.assign(sidebar.style,{position:'fixed',top:'0px',left:'0px',bottom:'auto',height:'100svh',minHeight:'100svh',maxHeight:'100svh',paddingTop:(h+14)+'px',overflow:'hidden',zIndex:'1550',transform:'translate3d(0,0,0)'});
+  Object.assign(sidebar.style,{position:'fixed',top:vv.top+'px',left:'0px',bottom:'auto',height:vv.height+'px',minHeight:vv.height+'px',maxHeight:vv.height+'px',paddingTop:(h+14)+'px',overflow:'hidden',zIndex:'5100',transform:'translate3d(0,0,0)'});
 }
 }
 function clearHardPinnedMobileDrawer(){
@@ -42,10 +63,20 @@ function clearHardPinnedMobileDrawer(){
   ['position','top','left','right','bottom','width','height','minHeight','maxHeight','paddingTop','overflow','zIndex','transform'].forEach(k=>el.style[k]='');
 });
 }
+let drawerPinRaf=0;
 function keepDrawerPinnedDuringScroll(){
-if(!document.body.classList.contains('mobile-nav-open')) return;
-hardPinMobileDrawer();
-window.scrollTo(0, mobileNavScrollY || 0);
+if(!document.body.classList.contains('mobile-nav-open')){
+  syncMobileViewportVars();
+  return;
+}
+if(drawerPinRaf) return;
+drawerPinRaf=requestAnimationFrame(()=>{
+  drawerPinRaf=0;
+  hardPinMobileDrawer();
+  if(Math.abs((window.scrollY||0) - (mobileNavScrollY||0))>1){
+    window.scrollTo(0, mobileNavScrollY || 0);
+  }
+});
 }
 function openMobileNav(){
 if(document.body.classList.contains('mobile-nav-open')) return;
@@ -77,10 +108,9 @@ else openMobileNav();
 }
 function blockPageScrollWhenDrawerOpen(e){
 if(!document.body.classList.contains('mobile-nav-open')) return;
-// iOS Safari can visually move fixed drawers when touch scrolling is
-// allowed inside the off-canvas area. While the drawer is open we
-// block touch/wheel scrolling completely; taps on menu buttons still work.
-e.preventDefault();
+// Important for iOS/Telegram: while the drawer is open, block every drag.
+// Click/tap events still work, but touchmove/wheel cannot move the page or shell.
+if(e.cancelable) e.preventDefault();
 }
 let lastMobileLayout = isMobileLayout();
 window.addEventListener('resize',()=>{
@@ -93,11 +123,12 @@ if(nowMobile !== lastMobileLayout){
 }
 });
 window.addEventListener('orientationchange',()=>setTimeout(()=>{updateMobileHeaderMetrics();keepDrawerPinnedDuringScroll();},250));
+window.addEventListener('load',()=>setTimeout(updateMobileHeaderMetrics,50));
 window.addEventListener('scroll', keepDrawerPinnedDuringScroll, {passive:true});
 if(window.visualViewport){
-  window.visualViewport.addEventListener('resize', keepDrawerPinnedDuringScroll);
-  window.visualViewport.addEventListener('scroll', keepDrawerPinnedDuringScroll);
+  window.visualViewport.addEventListener('resize', ()=>{updateMobileHeaderMetrics();keepDrawerPinnedDuringScroll();});
+  window.visualViewport.addEventListener('scroll', ()=>{updateMobileHeaderMetrics();keepDrawerPinnedDuringScroll();});
 }
-document.addEventListener('touchmove', blockPageScrollWhenDrawerOpen, {passive:false});
-document.addEventListener('wheel', blockPageScrollWhenDrawerOpen, {passive:false});
+document.addEventListener('touchmove', blockPageScrollWhenDrawerOpen, {passive:false,capture:true});
+document.addEventListener('wheel', blockPageScrollWhenDrawerOpen, {passive:false,capture:true});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeMobileNav();});

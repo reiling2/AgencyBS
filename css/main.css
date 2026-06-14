@@ -2168,3 +2168,161 @@ body[data-theme="black"] .project-mobile-meta .mini-box{
     display:none!important;
   }
 }
+
+
+/* =========================================================
+ v3.9.20 — fixed mobile app header + stable drawer on iOS/Telegram
+ Final shell override: the top ABS bar is pinned to the visual viewport
+ on every section. The page content is offset below it; drawer/overlay
+ are pinned to the same visual viewport and do not move while scrolling.
+ ========================================================= */
+@media(max-width:820px){
+  :root{
+    --mobile-header-h:64px;
+    --mobile-vv-top:0px;
+    --mobile-vvh:100dvh;
+  }
+
+  html,
+  body{
+    width:100%!important;
+    max-width:100%!important;
+    overflow-x:hidden!important;
+    scroll-padding-top:calc(var(--mobile-header-h,64px) + 14px)!important;
+  }
+
+  .mobile-header{
+    display:flex!important;
+    position:fixed!important;
+    top:var(--mobile-vv-top,0px)!important;
+    left:0!important;
+    right:0!important;
+    width:100vw!important;
+    height:var(--mobile-header-h,64px)!important;
+    min-height:var(--mobile-header-h,64px)!important;
+    max-height:var(--mobile-header-h,64px)!important;
+    padding:0 max(12px, env(safe-area-inset-right,0px)) 0 max(12px, env(safe-area-inset-left,0px))!important;
+    align-items:center!important;
+    justify-content:space-between!important;
+    background:rgba(255,255,255,.96)!important;
+    border-bottom:1px solid var(--line)!important;
+    box-shadow:0 10px 26px rgba(15,23,42,.08)!important;
+    -webkit-backdrop-filter:blur(16px)!important;
+    backdrop-filter:blur(16px)!important;
+    z-index:5000!important;
+    transform:translate3d(0,0,0)!important;
+    will-change:top,transform!important;
+    contain:layout paint!important;
+  }
+
+  body[data-theme="black"] .mobile-header{
+    background:rgba(7,11,18,.96)!important;
+  }
+
+  .main{
+    padding-top:calc(var(--mobile-header-h,64px) + 14px)!important;
+  }
+
+  .mobile-brand{
+    min-width:0!important;
+    flex:1 1 auto!important;
+    overflow:hidden!important;
+  }
+  .mobile-menu-btn{
+    flex:0 0 44px!important;
+    width:44px!important;
+    height:44px!important;
+    min-width:44px!important;
+    min-height:44px!important;
+    margin-left:10px!important;
+    position:relative!important;
+    top:auto!important;
+    right:auto!important;
+    z-index:5010!important;
+  }
+
+  /* scroll lock without shifting fixed children */
+  html.mobile-scroll-lock,
+  body.mobile-scroll-lock,
+  body.mobile-nav-open{
+    overflow:hidden!important;
+    overscroll-behavior:none!important;
+    touch-action:none!important;
+  }
+  body.mobile-nav-open{
+    position:static!important;
+    top:auto!important;
+    left:auto!important;
+    right:auto!important;
+    width:100%!important;
+    height:auto!important;
+    min-height:100%!important;
+  }
+
+  body.mobile-nav-open .mobile-header{
+    position:fixed!important;
+    top:var(--mobile-vv-top,0px)!important;
+    left:0!important;
+    right:0!important;
+    z-index:5200!important;
+  }
+
+  .nav-overlay,
+  body.mobile-nav-open .nav-overlay{
+    position:fixed!important;
+    top:var(--mobile-vv-top,0px)!important;
+    left:0!important;
+    right:0!important;
+    bottom:auto!important;
+    width:100vw!important;
+    height:var(--mobile-vvh,100dvh)!important;
+    max-height:var(--mobile-vvh,100dvh)!important;
+    z-index:5050!important;
+    transform:translate3d(0,0,0)!important;
+    touch-action:none!important;
+    overscroll-behavior:none!important;
+  }
+
+  .sidebar,
+  body.mobile-nav-open .sidebar{
+    position:fixed!important;
+    top:var(--mobile-vv-top,0px)!important;
+    left:0!important;
+    bottom:auto!important;
+    width:min(82vw,320px)!important;
+    height:var(--mobile-vvh,100dvh)!important;
+    min-height:var(--mobile-vvh,100dvh)!important;
+    max-height:var(--mobile-vvh,100dvh)!important;
+    padding-top:calc(var(--mobile-header-h,64px) + 14px)!important;
+    padding-right:14px!important;
+    padding-bottom:calc(18px + env(safe-area-inset-bottom,0px))!important;
+    padding-left:14px!important;
+    overflow:hidden!important;
+    z-index:5100!important;
+    transform:translate3d(-104%,0,0)!important;
+    will-change:transform,top!important;
+    contain:layout paint!important;
+    overscroll-behavior:none!important;
+    touch-action:none!important;
+  }
+  body.mobile-nav-open .sidebar{
+    transform:translate3d(0,0,0)!important;
+  }
+  body.mobile-nav-open .sidebar .nav{
+    max-height:calc(var(--mobile-vvh,100dvh) - var(--mobile-header-h,64px) - 34px - env(safe-area-inset-bottom,0px))!important;
+    overflow-y:auto!important;
+    overflow-x:hidden!important;
+    -webkit-overflow-scrolling:touch!important;
+    touch-action:pan-y!important;
+    overscroll-behavior:contain!important;
+  }
+}
+@media(max-width:420px){
+  .mobile-menu-btn{
+    flex-basis:42px!important;
+    width:42px!important;
+    height:42px!important;
+    min-width:42px!important;
+    min-height:42px!important;
+  }
+}
