@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Agency Brief Systems v3.9.10</title>
+  <!-- SheetJS loads lazily on Excel import -->
+  <link rel="stylesheet" href="css/main.css" />
+</head>
+<body>
+<header class="mobile-header">
+<div class="mobile-brand">
+<div class="logo">ABS</div>
+<div class="mobile-title">
+<b>Agency Brief Systems</b>
+<span id="mobilePageTitle">Проекты</span>
+</div>
+</div>
+<button class="mobile-menu-btn" type="button" aria-label="Открыть меню" onclick="toggleMobileNav()">☰</button>
+</header>
+<div class="nav-overlay" onclick="closeMobileNav()">
+</div>
+<div class="app">
+<aside class="sidebar">
+<div class="brand">
+<div class="logo">ABS</div>
+<div>
+<div class="brand-title">Agency Brief<br>Systems</div>
+</div>
+</div>
+<div class="nav" id="nav">
+<button data-view="projects" class="active">
+<span class="icon">▦</span>Проекты</button>
+<button data-view="project">
+<span class="icon">◈</span>Карточка проекта</button>
+<button data-view="brief">
+<span class="icon">◫</span>Бриф</button>
+<button data-view="import">
+<span class="icon">⇪</span>Импорт</button>
+<button data-view="analysis">
+<span class="icon">✦</span>Автоанализ</button>
+<button data-view="report">
+<span class="icon">▣</span>Отчет</button>
+<button data-view="site">
+<span class="icon">◉</span>Сайт</button>
+<button data-view="settings">
+<span class="icon">⚙</span>Настройки</button>
+</div>
+</aside>
+<main class="main">
+<div class="topbar no-print">
+<div class="hgroup">
+<h1 id="pageTitle">Проекты</h1>
+<p id="pageSubtitle">Компактная база проектов и быстрый вход в карточку.</p>
+</div>
+<div class="actions" id="topActions">
+</div>
+</div>
+<section id="view-projects" class="view active">
+</section>
+<section id="view-project" class="view">
+</section>
+<section id="view-brief" class="view">
+</section>
+<section id="view-import" class="view">
+</section>
+<section id="view-analysis" class="view">
+</section>
+<section id="view-report" class="view">
+</section>
+<section id="view-site" class="view">
+</section>
+<section id="view-settings" class="view">
+</section>
+</main>
+</div>
+<div class="modal" id="projectModal">
+<div class="modal-card">
+<button class="close" onclick="closeModal('projectModal')">✕</button>
+<h2>Новый проект</h2>
+<p class="muted">Минимально создаем карточку, остальное можно загрузить через Excel или заполнить в брифе.</p>
+<div class="grid cols-2">
+<div class="field">
+<label>Название проекта</label>
+<input id="newTitle" placeholder="Например: Септики МО">
+</div>
+<div class="field">
+<label>Ниша</label>
+<input id="newNiche" placeholder="Например: Строительство">
+</div>
+<div class="field">
+<label>Статус</label>
+<select id="newStatus">
+<option>Бриф</option>
+<option>Автоанализ</option>
+<option>Запуск</option>
+<option>В работе</option>
+<option>Отчет</option>
+</select>
+</div>
+</div>
+<button class="btn primary" onclick="createProject()">Создать проект</button>
+</div>
+</div>
+<div class="toast" id="toast">
+</div>
+
+  <script src="js/data.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/core.js"></script>
+  <script src="js/projects.js"></script>
+  <script src="js/import.js"></script>
+  <script src="js/brief.js"></script>
+  <script src="js/algorithms.js"></script>
+  <script src="js/analysis.js"></script>
+  <script src="js/report.js"></script>
+  <script src="js/site.js"></script>
+  <script src="js/settings.js"></script>
+  <script src="js/files.js"></script>
+  <script src="js/export.js"></script>
+  <script src="js/bootstrap.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
