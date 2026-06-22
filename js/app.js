@@ -2,6 +2,7 @@
 
 const STORAGE_KEY = 'abs_v2_preview_state';
 const THEME_KEY = 'abs_v2_preview_theme';
+const DEMO_EMAIL = 'client@example.ru';
 
 const PROJECT_STATUSES = [
   'Подготовка к запуску',
@@ -135,7 +136,11 @@ let calculatorResults = null;
 function loadState() {
   try {
     const raw = window.localStorageAdapter?.get?.(STORAGE_KEY, null);
-    if (raw) return normalizeState(raw);
+    if (raw) {
+      const normalized = normalizeState(raw);
+      window.localStorageAdapter?.set?.(STORAGE_KEY, normalized);
+      return normalized;
+    }
   } catch (err) {
     console.warn('Cannot parse state', err);
   }
@@ -153,6 +158,8 @@ function normalizeState(next) {
 }
 
 function normalizeProject(project) {
+  const isDemoProject = project.id === 'demo-project';
+  const email = isDemoProject && project.email === DEMO_EMAIL ? '' : (project.email || '');
   const normalized = {
     id: project.id || uid('project'),
     title: project.title || 'Новый проект',
@@ -160,7 +167,7 @@ function normalizeProject(project) {
     status: PROJECT_STATUSES.includes(project.status) ? project.status : 'Подготовка к запуску',
     clientName: project.clientName || '',
     phone: project.phone || '',
-    email: project.email || '',
+    email,
     paymentType: project.paymentType || '',
     paymentDate: project.paymentDate || '',
     paymentAmount: Number(project.paymentAmount || 0),
@@ -196,7 +203,7 @@ function createDemoState() {
     status: 'Подготовка к запуску',
     clientName: 'Иван Петров',
     phone: '+7 999 000-00-00',
-    email: 'client@example.ru',
+    email: '',
     paymentType: 'Аванс',
     paymentDate: '2026-06-11',
     paymentAmount: 50000,
@@ -243,6 +250,23 @@ function applyUiTheme(theme = getUiTheme()) {
 function setUiTheme(theme) {
   window.settingsApi?.setTheme?.(theme);
   applyUiTheme(theme);
+}
+
+function getWebsiteNotificationSettings() {
+  return window.websiteService?.getNotificationSettings?.() || { showNewLeadBadge: true };
+}
+
+function saveWebsiteNotificationSettings(patch) {
+  return window.websiteService?.saveNotificationSettings?.(patch) || { showNewLeadBadge: true, ...(patch || {}) };
+}
+
+function updateWebsiteNewLeadBadge() {
+  const badge = document.getElementById('websiteNewLeadBadge');
+  if (!badge) return;
+  const notifications = getWebsiteNotificationSettings();
+  const count = notifications.showNewLeadBadge ? Number(window.websiteService?.getNewLeadCount?.() || 0) : 0;
+  badge.hidden = count <= 0;
+  badge.textContent = count > 0 ? `+${count}` : '';
 }
 
 function uid(prefix) {
@@ -295,20 +319,38 @@ function render() {
   renderCalculator();
   renderSettings();
   renderKnowledge();
+  updateWebsiteNewLeadBadge();
 }
 
 function renderProjects() {
   const root = document.getElementById('view-projects');
-  const query = (document.getElementById('projectSearch')?.value || '').toLowerCase();
-  const status = document.getElementById('projectStatusFilter')?.value || '';
-  const niche = document.getElementById('projectNicheFilter')?.value || '';
-  const niches = [...new Set(state.projects.map(p => p.niche).filter(Boolean))];
-  const projects = state.projects.filter(project => {
+  renderProjectsPage(root);
+}
+
+function getProjectFilters() {
+  return {
+    query: document.getElementById('projectSearch')?.value || '',
+    status: document.getElementById('projectStatusFilter')?.value || '',
+    niche: document.getElementById('projectNicheFilter')?.value || ''
+  };
+}
+
+function getFilteredProjects(filters = getProjectFilters()) {
+  const query = filters.query.toLowerCase();
+  return state.projects.filter(project => {
     const matchesQuery = !query || [project.title, project.niche, project.clientName].join(' ').toLowerCase().includes(query);
-    const matchesStatus = !status || project.status === status;
-    const matchesNiche = !niche || project.niche === niche;
+    const matchesStatus = !filters.status || project.status === filters.status;
+    const matchesNiche = !filters.niche || project.niche === filters.niche;
     return matchesQuery && matchesStatus && matchesNiche;
   });
+}
+
+function renderProjectsPage(root = document.getElementById('view-projects')) {
+  if (!root) return;
+  const filters = getProjectFilters();
+  const status = filters.status;
+  const niche = filters.niche;
+  const niches = [...new Set(state.projects.map(p => p.niche).filter(Boolean))];
 
   root.innerHTML = `
     <div class="page-head">
@@ -328,7 +370,7 @@ function renderProjects() {
         </div>
       </div>
       <div class="filters">
-        <input class="input" id="projectSearch" placeholder="Поиск по проекту, нише, клиенту" value="${esc(document.getElementById('projectSearch')?.value || '')}" />
+        <input class="input" id="projectSearch" placeholder="Поиск по проекту, нише, клиенту" value="${esc(filters.query)}" autocomplete="off" />
         <select class="input" id="projectStatusFilter">
           <option value="">Все статусы</option>
           ${PROJECT_STATUSES.map(item => `<option ${item === status ? 'selected' : ''}>${esc(item)}</option>`).join('')}
@@ -341,59 +383,71 @@ function renderProjects() {
       </div>
     </div>
 
-    <div class="card">
-      ${projects.length ? `
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Проект</th>
-                <th>Ниша</th>
-                <th>Статус</th>
-                <th>Клиент</th>
-                <th>Сделка</th>
-                <th>Оплата</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              ${projects.map(project => `
-                <tr class="project-row" data-open-project="${project.id}">
-                  <td>
-                    <div class="row-title">${esc(project.title)}</div>
-                    <div class="row-sub">ID: ${esc(project.id)}</div>
-                  </td>
-                  <td>${esc(project.niche || 'Не указано')}</td>
-                  <td><span class="badge ${badgeClass(project.status)}">${esc(project.status)}</span></td>
-                  <td>
-                    <div>${esc(project.clientName || 'Не указан')}</div>
-                    <div class="row-sub">${esc(project.phone || '')}</div>
-                  </td>
-                  <td>${esc(project.dealType || 'Не указано')}</td>
-                  <td>${formatMoney(project.paymentAmount)}</td>
-                  <td class="actions">
-                    <button class="btn small danger" data-delete-project="${project.id}">Удалить</button>
-                  </td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
-        </div>` : `<div class="empty"><strong>Проектов пока нет</strong>Создай первый проект, чтобы открыть карточку и этапы.</div>`}
-    </div>
+    <div class="card" id="projectsList"></div>
   `;
 
-  bindProjectListEvents();
+  bindProjectPageEvents();
+  renderProjectsList();
 }
 
-function bindProjectListEvents() {
+function renderProjectsList() {
+  const list = document.getElementById('projectsList');
+  if (!list) return;
+  const projects = getFilteredProjects();
+  list.innerHTML = projects.length ? `
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Проект</th>
+            <th>Ниша</th>
+            <th>Статус</th>
+            <th>Клиент</th>
+            <th>Сделка</th>
+            <th>Оплата</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          ${projects.map(project => `
+            <tr class="project-row" data-open-project="${project.id}">
+              <td>
+                <div class="row-title">${esc(project.title)}</div>
+                <div class="row-sub">ID: ${esc(project.id)}</div>
+              </td>
+              <td>${esc(project.niche || 'Не указано')}</td>
+              <td><span class="badge ${badgeClass(project.status)}">${esc(project.status)}</span></td>
+              <td>
+                <div>${esc(project.clientName || 'Не указан')}</div>
+                <div class="row-sub">${esc(project.phone || '')}</div>
+              </td>
+              <td>${esc(project.dealType || 'Не указано')}</td>
+              <td>${formatMoney(project.paymentAmount)}</td>
+              <td class="actions">
+                <button class="btn small danger" data-delete-project="${project.id}">Удалить</button>
+              </td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>` : `<div class="empty"><strong>Проектов пока нет</strong>Создай первый проект, чтобы открыть карточку и этапы.</div>`;
+
+  bindProjectRowsEvents();
+}
+
+function bindProjectPageEvents() {
   document.getElementById('openProjectModalBtn')?.addEventListener('click', openProjectModal);
-  ['projectSearch', 'projectStatusFilter', 'projectNicheFilter'].forEach(id => {
-    document.getElementById(id)?.addEventListener('input', renderProjects);
+  document.getElementById('projectSearch')?.addEventListener('input', renderProjectsList);
+  ['projectStatusFilter', 'projectNicheFilter'].forEach(id => {
+    document.getElementById(id)?.addEventListener('change', renderProjectsList);
   });
   document.getElementById('resetProjectFilters')?.addEventListener('click', () => {
     ['projectSearch', 'projectStatusFilter', 'projectNicheFilter'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
-    renderProjects();
+    renderProjectsList();
   });
+}
+
+function bindProjectRowsEvents() {
   document.querySelectorAll('[data-open-project]').forEach(btn => btn.addEventListener('click', () => {
     activeProjectId = btn.dataset.openProject;
     showAllStages = false;
@@ -776,22 +830,12 @@ function renderReports() {
 }
 
 function renderSite() {
-  document.getElementById('view-site').innerHTML = `
-    <div class="page-head"><div><h1>Сайт</h1><p>Раздел основного публичного сайта: аналитика и админ-панель.</p></div></div>
-    <div class="card">
-      <div class="tabs">
-        <button class="tab-btn active" data-tab="site-analytics">Статистика и аналитика сайта</button>
-        <button class="tab-btn" data-tab="site-admin">Админ-панель сайта</button>
-      </div>
-      <div class="tab-pane active" id="site-analytics">
-        <div class="dark-note">Здесь будет статистика основного сайта: заявки, формы, UTM, страницы, события, источники, конверсии и ошибки отправки форм.</div>
-      </div>
-      <div class="tab-pane" id="site-admin">
-        <div class="dark-note">Здесь будет админ-панель основного сайта: редактирование блоков, текстов, форм, услуг, медиа и SEO-данных.</div>
-      </div>
-    </div>
-  `;
-  bindTabs();
+  const root = document.getElementById('view-site');
+  if (window.websiteView?.render) {
+    window.websiteView.render({ root });
+    return;
+  }
+  root.innerHTML = `<div class="empty"><strong>Раздел сайта не загружен</strong></div>`;
 }
 
 function renderCalculator() {
@@ -899,6 +943,7 @@ function saveCalculationToProject() {
 
 function renderSettings() {
   const theme = getUiTheme();
+  const websiteNotifications = getWebsiteNotificationSettings();
   document.getElementById('view-settings').innerHTML = `
     <div class="page-head"><div><h1>Настройки</h1><p>Оформление интерфейса и базовые настройки ABS.</p></div></div>
     <div class="card">
@@ -914,6 +959,18 @@ function renderSettings() {
       </div>
     </div>
     <div class="card">
+      <div class="card-head">
+        <div>
+          <h2>Сайт / Уведомления</h2>
+          <div class="card-subtitle">Счётчик показывает только заявки сайта со статусом “новая”. Открытие раздела “Сайт” его не сбрасывает.</div>
+        </div>
+      </div>
+      <label class="settings-toggle">
+        <input id="websiteLeadBadgeToggle" type="checkbox" ${websiteNotifications.showNewLeadBadge ? 'checked' : ''}>
+        <span>Показывать счётчик новых заявок в меню</span>
+      </label>
+    </div>
+    <div class="card">
       <h2>Настройки системы</h2>
       <p class="muted">В будущем: пользователи, доступы, интеграции, безопасность, резервные копии, системные параметры.</p>
       <button class="btn danger" id="resetDemoState">Сбросить демо-данные</button>
@@ -923,6 +980,10 @@ function renderSettings() {
     setUiTheme(btn.dataset.themeChoice);
     renderSettings();
   }));
+  document.getElementById('websiteLeadBadgeToggle')?.addEventListener('change', event => {
+    saveWebsiteNotificationSettings({ showNewLeadBadge: event.currentTarget.checked });
+    updateWebsiteNewLeadBadge();
+  });
   document.getElementById('resetDemoState')?.addEventListener('click', () => {
     if (!confirm('Сбросить локальные демо-данные?')) return;
     window.localStorageAdapter?.remove?.(STORAGE_KEY);
@@ -1087,6 +1148,7 @@ window.absApp = {
   renderReports,
   renderSettings,
   renderSite,
+  updateWebsiteNewLeadBadge,
   setView
 };
 

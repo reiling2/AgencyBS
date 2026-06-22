@@ -8,6 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/main.css" />
+  <link rel="stylesheet" href="css/views/website.css" />
 </head>
 <body>
   <div class="mobile-topbar">
@@ -33,7 +34,7 @@
         <button class="nav-item" data-view="project-card">Карточка проекта</button>
         <button class="nav-item" data-view="stats">Статистика</button>
         <button class="nav-item" data-view="reports">Отчёты</button>
-        <button class="nav-item" data-view="site">Сайт</button>
+        <button class="nav-item" data-view="site">Сайт<span class="sidebar-badge" id="websiteNewLeadBadge" hidden></span></button>
         <button class="nav-item" data-view="calculator">Калькулятор</button>
         <button class="nav-item" data-view="settings">Настройки</button>
         <button class="nav-item" data-view="knowledge">База знаний</button>
@@ -66,7 +67,7 @@
       <h2 id="projectModalTitle">Новый проект</h2>
       <p class="muted">Заполни обязательные поля. Эти данные попадут в карточку проекта.</p>
 
-      <form id="projectForm" class="form-grid">
+      <form id="projectForm" class="form-grid" autocomplete="off">
         <label class="field field-wide">
           <span>Комментарий *</span>
           <textarea name="comment" rows="3" required placeholder="Например: что важно по клиенту, оплате, запуску"></textarea>
@@ -116,7 +117,7 @@
 
         <label class="field">
           <span>Электронная почта *</span>
-          <input name="email" type="email" required placeholder="client@example.ru" />
+          <input name="email" type="email" required placeholder="client@example.ru" autocomplete="new-password" />
         </label>
 
         <label class="field">
@@ -198,6 +199,7 @@
   <script src="js/services/validationService.js"></script>
   <script src="js/services/statisticsService.js"></script>
   <script src="js/services/avitoStatsService.js"></script>
+  <script src="js/services/websiteStatsService.js"></script>
   <script src="js/services/websiteService.js"></script>
   <script src="js/views/projectsView.js"></script>
   <script src="js/views/projectCardView.js"></script>
@@ -209,43 +211,5 @@
   <script src="js/views/settingsView.js"></script>
   <script src="js/views/knowledgeBaseView.js"></script>
   <script src="js/app.js"></script>
-<!-- Code injected by live-server -->
-<script>
-	// <![CDATA[  <-- For SVG support
-	if ('WebSocket' in window) {
-		(function () {
-			function refreshCSS() {
-				var sheets = [].slice.call(document.getElementsByTagName("link"));
-				var head = document.getElementsByTagName("head")[0];
-				for (var i = 0; i < sheets.length; ++i) {
-					var elem = sheets[i];
-					var parent = elem.parentElement || head;
-					parent.removeChild(elem);
-					var rel = elem.rel;
-					if (elem.href && typeof rel != "string" || rel.length == 0 || rel.toLowerCase() == "stylesheet") {
-						var url = elem.href.replace(/(&|\?)_cacheOverride=\d+/, '');
-						elem.href = url + (url.indexOf('?') >= 0 ? '&' : '?') + '_cacheOverride=' + (new Date().valueOf());
-					}
-					parent.appendChild(elem);
-				}
-			}
-			var protocol = window.location.protocol === 'http:' ? 'ws://' : 'wss://';
-			var address = protocol + window.location.host + window.location.pathname + '/ws';
-			var socket = new WebSocket(address);
-			socket.onmessage = function (msg) {
-				if (msg.data == 'reload') window.location.reload();
-				else if (msg.data == 'refreshcss') refreshCSS();
-			};
-			if (sessionStorage && !sessionStorage.getItem('IsThisFirstTime_Log_From_LiveServer')) {
-				console.log('Live reload enabled.');
-				sessionStorage.setItem('IsThisFirstTime_Log_From_LiveServer', true);
-			}
-		})();
-	}
-	else {
-		console.error('Upgrade your browser. This Browser is NOT supported WebSocket for Live-Reloading.');
-	}
-	// ]]>
-</script>
 </body>
 </html>

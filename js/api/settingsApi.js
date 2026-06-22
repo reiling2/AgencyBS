@@ -2,7 +2,13 @@
   'use strict';
   function get() {
     const db = window.localStorageAdapter.getDatabase();
-    return { theme: db.settings?.theme || window.absStorage.getString(window.ABS_CONSTANTS.themeKey, 'light') || 'light', statisticsFilters: db.settings?.statisticsFilters || null, statisticsMetricSettings: db.settings?.statisticsMetricSettings || null };
+    return {
+      ...(db.settings || {}),
+      theme: db.settings?.theme || window.absStorage.getString(window.ABS_CONSTANTS.themeKey, 'light') || 'light',
+      statisticsFilters: db.settings?.statisticsFilters || null,
+      statisticsMetricSettings: db.settings?.statisticsMetricSettings || null,
+      websiteSettings: db.settings?.websiteSettings || null
+    };
   }
   function update(data) {
     const db = window.localStorageAdapter.getDatabase();

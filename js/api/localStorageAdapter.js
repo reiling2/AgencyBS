@@ -19,6 +19,17 @@
       avitoFinance: [],
       websiteLeads: [],
       websiteEvents: [],
+      websitePageViews: [],
+      websiteVisitors: [],
+      websiteSessions: [],
+      websiteErrors: [],
+      websitePages: [],
+      websitePagePerformance: [],
+      websiteContentBlocks: [],
+      websiteForms: [],
+      websiteMedia: [],
+      websiteSeoSettings: null,
+      websiteSiteSettings: null,
       knowledgeBaseItems: [],
       settings: { theme: 'light' }
     };
@@ -64,12 +75,13 @@
       const now = new Date().toISOString();
       const clientId = legacyProject.clientId || window.absIds.uid('client');
       const projectId = legacyProject.id || window.absIds.uid('project');
+      const email = projectId === 'demo-project' && legacyProject.email === 'client@example.ru' ? '' : (legacyProject.email || '');
 
       db.clients.push({
         id: clientId,
         fullName: legacyProject.clientName || '',
         phone: legacyProject.phone || '',
-        email: legacyProject.email || '',
+        email,
         createdAt: legacyProject.createdAt || now,
         updatedAt: legacyProject.updatedAt || now
       });
@@ -168,6 +180,12 @@
       if (Array.isArray(fallback[key]) && !Array.isArray(db[key])) db[key] = [];
     });
     db.settings = { ...fallback.settings, ...(db.settings || {}) };
+    const demoProject = db.projects.find(project => project.id === 'demo-project');
+    if (demoProject?.clientId) {
+      db.clients = db.clients.map(client => client.id === demoProject.clientId && client.email === 'client@example.ru'
+        ? { ...client, email: '' }
+        : client);
+    }
     return db;
   }
 
