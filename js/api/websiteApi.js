@@ -275,6 +275,10 @@
     return nextRow;
   }
 
+  function notifyLeadsChanged(detail = {}) {
+    window.dispatchEvent?.(new CustomEvent('website:leads-changed', { detail }));
+  }
+
   function getWritableWebsiteLeads(db) {
     if (!Array.isArray(db.websiteLeads)) db.websiteLeads = [];
     if (!db.websiteLeads.length && !hasStoredWebsiteData(db)) {
@@ -305,6 +309,7 @@
     leads.push(nextLead);
     db.websiteLeads = leads;
     window.localStorageAdapter.saveDatabase(db);
+    notifyLeadsChanged({ action: 'created', lead: nextLead });
     return nextLead;
   }
   function postError(row) { return create('websiteErrors', row); }
@@ -327,6 +332,7 @@
       return updatedLead;
     });
     window.localStorageAdapter.saveDatabase(db);
+    if (updatedLead) notifyLeadsChanged({ action: 'status-updated', lead: updatedLead });
     return updatedLead;
   }
 
@@ -342,7 +348,8 @@
   function updateNotificationSettings(patch = {}) {
     const settings = window.settingsApi?.get?.() || {};
     const website = { showNewLeadBadge: true, ...(settings.website || {}), ...patch };
-    window.settingsApi?.update?.({ ...settings, website });
+    window.settingsApi?.update?.({ website });
+    window.dispatchEvent?.(new CustomEvent('website:notification-settings-changed', { detail: website }));
     return website;
   }
 

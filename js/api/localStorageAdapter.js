@@ -37,7 +37,15 @@
       websiteSeoSettings: null,
       websiteSiteSettings: null,
       knowledgeBaseItems: [],
-      settings: { theme: 'light' }
+      settings: {
+        theme: 'light',
+        website: {
+          showNewLeadBadge: true
+        },
+        weather: {
+          showSidebarWeather: true
+        }
+      }
     };
   }
 
@@ -189,7 +197,20 @@
     Object.keys(fallback).forEach(key => {
       if (Array.isArray(fallback[key]) && !Array.isArray(db[key])) db[key] = [];
     });
-    db.settings = { ...fallback.settings, ...(db.settings || {}) };
+    db.settings = {
+      ...fallback.settings,
+      ...(db.settings || {}),
+      website: {
+        ...fallback.settings.website,
+        ...((db.settings || {}).website || {}),
+        showNewLeadBadge: (db.settings || {}).website?.showNewLeadBadge !== false
+      },
+      weather: {
+        ...fallback.settings.weather,
+        ...((db.settings || {}).weather || {}),
+        showSidebarWeather: (db.settings || {}).weather?.showSidebarWeather !== false
+      }
+    };
     const demoProject = db.projects.find(project => project.id === 'demo-project');
     if (demoProject?.clientId) {
       db.clients = db.clients.map(client => client.id === demoProject.clientId && client.email === 'client@example.ru'

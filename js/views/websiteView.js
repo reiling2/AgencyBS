@@ -405,8 +405,8 @@
       select.addEventListener('change', event => {
         const updated = window.websiteService.updateLeadStatus(event.currentTarget.dataset.leadStatus, event.currentTarget.value);
         if (!updated) return;
-        window.absApp?.updateWebsiteNewLeadBadge?.();
         render({ root });
+        window.absApp?.updateWebsiteNewLeadBadge?.();
       });
     });
   }

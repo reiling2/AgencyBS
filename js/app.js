@@ -296,20 +296,61 @@ function setUiTheme(theme) {
 }
 
 function getWebsiteNotificationSettings() {
-  return window.websiteService?.getNotificationSettings?.() || { showNewLeadBadge: true };
+  return window.websiteService?.getNotificationSettings?.()
+    || window.websiteApi?.getNotificationSettings?.()
+    || { showNewLeadBadge: true };
 }
 
 function saveWebsiteNotificationSettings(patch) {
-  return window.websiteService?.saveNotificationSettings?.(patch) || { showNewLeadBadge: true, ...(patch || {}) };
+  if (window.websiteService?.saveNotificationSettings) return window.websiteService.saveNotificationSettings(patch);
+  const next = { ...getWebsiteNotificationSettings(), ...(patch || {}) };
+  window.settingsApi?.update?.({ website: next });
+  return next;
+}
+
+function getWeatherSettings() {
+  const settings = window.settingsApi?.get?.() || {};
+  return {
+    showSidebarWeather: settings.weather?.showSidebarWeather !== false
+  };
+}
+
+function saveWeatherSettings(patch) {
+  const current = getWeatherSettings();
+  const next = { ...current, ...(patch || {}) };
+  window.settingsApi?.update?.({ weather: next });
+  return next;
+}
+
+function updateSidebarWeatherWidget() {
+  if (getWeatherSettings().showSidebarWeather) {
+    window.weatherWidget?.init?.('sidebarWeatherWidget');
+    return;
+  }
+  window.weatherWidget?.destroy?.('sidebarWeatherWidget');
+}
+
+function getWebsiteNewLeadCount() {
+  const count = window.websiteService?.getNewLeadCount?.()
+    ?? window.websiteApi?.getNewLeadCount?.();
+  if (Number.isFinite(Number(count))) return Number(count);
+  const leads = window.websiteService?.getLeads?.()
+    || window.websiteApi?.getLeads?.()
+    || [];
+  const normalizeStatus = window.websiteApi?.normalizeLeadStatus || (status => String(status || 'new'));
+  return leads.filter(lead => normalizeStatus(lead.status) === 'new').length;
 }
 
 function updateWebsiteNewLeadBadge() {
   const badge = document.getElementById('websiteNewLeadBadge');
   if (!badge) return;
   const notifications = getWebsiteNotificationSettings();
-  const count = notifications.showNewLeadBadge ? Number(window.websiteService?.getNewLeadCount?.() || 0) : 0;
-  badge.hidden = count <= 0;
-  badge.textContent = count > 0 ? `+${count}` : '';
+  const count = notifications.showNewLeadBadge ? getWebsiteNewLeadCount() : 0;
+  const isVisible = count > 0;
+  badge.hidden = !isVisible;
+  badge.textContent = isVisible ? `+${count}` : '';
+  badge.title = isVisible ? `Новых заявок: ${count}` : '';
+  badge.setAttribute('aria-label', isVisible ? `Новых заявок: ${count}` : 'Новых заявок нет');
 }
 
 function uid(prefix) {
@@ -1327,6 +1368,7 @@ function saveCalculationToProject() {
 function renderSettings() {
   const theme = getUiTheme();
   const websiteNotifications = getWebsiteNotificationSettings();
+  const weatherSettings = getWeatherSettings();
   document.getElementById('view-settings').innerHTML = `
     <div class="page-head"><div><h1>Настройки</h1><p>Оформление интерфейса и базовые настройки ABS.</p></div></div>
     <div class="card">
@@ -1345,12 +1387,16 @@ function renderSettings() {
       <div class="card-head">
         <div>
           <h2>Сайт / Уведомления</h2>
-          <div class="card-subtitle">Счётчик показывает только заявки сайта со статусом “новая”. Открытие раздела “Сайт” его не сбрасывает.</div>
+          <div class="card-subtitle">Счётчик новых заявок и погодный блок в боковом меню.</div>
         </div>
       </div>
       <label class="settings-toggle">
         <input id="websiteLeadBadgeToggle" type="checkbox" ${websiteNotifications.showNewLeadBadge ? 'checked' : ''}>
         <span>Показывать счётчик новых заявок в меню</span>
+      </label>
+      <label class="settings-toggle">
+        <input id="sidebarWeatherToggle" type="checkbox" ${weatherSettings.showSidebarWeather ? 'checked' : ''}>
+        <span>Показывать погоду в сайдбаре</span>
       </label>
     </div>
     <div class="card">
@@ -1366,6 +1412,10 @@ function renderSettings() {
   document.getElementById('websiteLeadBadgeToggle')?.addEventListener('change', event => {
     saveWebsiteNotificationSettings({ showNewLeadBadge: event.currentTarget.checked });
     updateWebsiteNewLeadBadge();
+  });
+  document.getElementById('sidebarWeatherToggle')?.addEventListener('change', event => {
+    saveWeatherSettings({ showSidebarWeather: event.currentTarget.checked });
+    updateSidebarWeatherWidget();
   });
   document.getElementById('resetDemoState')?.addEventListener('click', () => {
     if (!confirm('Сбросить локальные демо-данные?')) return;
@@ -1528,8 +1578,11 @@ function init() {
   document.getElementById('cancelProjectModal')?.addEventListener('click', closeProjectModal);
   document.getElementById('projectForm')?.addEventListener('submit', createProjectFromForm);
   window.addEventListener('resize', () => requestAnimationFrame(syncProjectTopCardsHeight));
-  window.weatherWidget?.init?.('sidebarWeatherWidget');
+  window.addEventListener('website:leads-changed', updateWebsiteNewLeadBadge);
+  window.addEventListener('website:notification-settings-changed', updateWebsiteNewLeadBadge);
   render();
+  requestAnimationFrame(updateWebsiteNewLeadBadge);
+  requestAnimationFrame(updateSidebarWeatherWidget);
 }
 
 window.absApp = {

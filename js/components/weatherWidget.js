@@ -24,9 +24,14 @@
     };
   }
 
+  function shouldShowWeather() {
+    return window.settingsApi?.get?.().weather?.showSidebarWeather !== false;
+  }
+
   function render(target, weatherData) {
     const root = getRoot(target);
     if (!root || !window.weatherService) return;
+    root.hidden = false;
 
     const weather = normalizeWeather(weatherData || lastWeather || window.weatherService.createLoadingWeather());
     lastWeather = weather;
@@ -63,9 +68,17 @@
   async function refresh(target) {
     const root = getRoot(target);
     if (!root || !window.weatherService) return null;
+    if (!shouldShowWeather()) {
+      destroy(root);
+      return null;
+    }
 
     try {
       const freshWeather = await window.weatherService.fetchSaintPetersburgWeather();
+      if (!shouldShowWeather()) {
+        destroy(root);
+        return null;
+      }
       render(root, freshWeather);
       return freshWeather;
     } catch (err) {
@@ -80,6 +93,10 @@
   function init(target = 'sidebarWeatherWidget') {
     const root = getRoot(target);
     if (!root || !window.weatherService) return;
+    if (!shouldShowWeather()) {
+      destroy(root);
+      return;
+    }
 
     render(root, window.weatherService.createLoadingWeather());
     const cached = window.weatherService.getCachedWeather();
@@ -93,7 +110,16 @@
     refresh(root);
   }
 
+  function destroy(target = 'sidebarWeatherWidget') {
+    const root = getRoot(target);
+    if (!root) return;
+    root.innerHTML = '';
+    root.hidden = true;
+    lastWeather = null;
+  }
+
   window.weatherWidget = {
+    destroy,
     init,
     refresh,
     render
