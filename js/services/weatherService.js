@@ -3,6 +3,7 @@
 
   const CACHE_KEY = 'abs_spb_weather_cache';
   const CACHE_TTL_MS = 15 * 60 * 1000;
+  const REQUEST_TIMEOUT_MS = 8000;
   const CITY = 'Санкт-Петербург';
 
   const WEATHER_CODE_MAP = {
@@ -135,12 +136,12 @@
     };
   }
 
-  function createUnavailableWeather() {
+  function createUnavailableWeather(message = 'Данные недоступны') {
     return {
       city: CITY,
       temperature: null,
       temperatureLabel: '—',
-      condition: 'Данные недоступны',
+      condition: message,
       weatherKey: 'unavailable',
       iconClass: WEATHER_ICON_CLASS.unavailable,
       humidity: null,
@@ -153,7 +154,7 @@
       todayRange: '—',
       tomorrowRange: '—',
       updatedAt: '',
-      updatedLabel: 'Нет связи'
+      updatedLabel: 'Нет связи, нажмите для повтора'
     };
   }
 
@@ -212,14 +213,18 @@
     return data;
   }
 
-  async function fetchSaintPetersburgWeather() {
-    const payload = await window.weatherApi.getSaintPetersburgWeather();
+  async function fetchSaintPetersburgWeather(options = {}) {
+    const payload = await window.weatherApi.getSaintPetersburgWeather({
+      timeoutMs: REQUEST_TIMEOUT_MS,
+      ...(options || {})
+    });
     return saveCache(normalizeWeatherPayload(payload));
   }
 
   window.weatherService = {
     CACHE_KEY,
     CACHE_TTL_MS,
+    REQUEST_TIMEOUT_MS,
     WEATHER_CODE_MAP,
     WEATHER_ICON_CLASS,
     createLoadingWeather,

@@ -2,6 +2,7 @@
   'use strict';
 
   let lastWeather = null;
+  let refreshPromise = null;
 
   function escapeHtml(value) {
     return String(value ?? '')
@@ -25,13 +26,16 @@
   }
 
   function shouldShowWeather() {
-    return window.settingsApi?.get?.().weather?.showSidebarWeather !== false;
+    return window.settingsApi?.get?.()?.weather?.showSidebarWeather !== false;
   }
 
   function render(target, weatherData) {
     const root = getRoot(target);
     if (!root || !window.weatherService) return;
     root.hidden = false;
+    root.setAttribute('role', 'button');
+    root.setAttribute('tabindex', '0');
+    root.setAttribute('title', 'Обновить погоду');
 
     const weather = normalizeWeather(weatherData || lastWeather || window.weatherService.createLoadingWeather());
     lastWeather = weather;
@@ -72,22 +76,28 @@
       destroy(root);
       return null;
     }
+    if (refreshPromise) return refreshPromise;
 
-    try {
-      const freshWeather = await window.weatherService.fetchSaintPetersburgWeather();
-      if (!shouldShowWeather()) {
-        destroy(root);
-        return null;
+    refreshPromise = (async () => {
+      try {
+        const freshWeather = await window.weatherService.fetchSaintPetersburgWeather();
+        if (!shouldShowWeather()) {
+          destroy(root);
+          return null;
+        }
+        render(root, freshWeather);
+        return freshWeather;
+      } catch (err) {
+        console.warn('Weather widget update failed', err);
+        const cached = window.weatherService.getAnyCachedWeather();
+        const fallback = cached || window.weatherService.createUnavailableWeather();
+        render(root, fallback);
+        return fallback;
+      } finally {
+        refreshPromise = null;
       }
-      render(root, freshWeather);
-      return freshWeather;
-    } catch (err) {
-      console.warn('Weather widget update failed', err);
-      const cached = window.weatherService.getAnyCachedWeather();
-      const fallback = cached || window.weatherService.createUnavailableWeather();
-      render(root, fallback);
-      return fallback;
-    }
+    })();
+    return refreshPromise;
   }
 
   function init(target = 'sidebarWeatherWidget') {
@@ -98,8 +108,15 @@
       return;
     }
 
+    root.onclick = () => refresh(root);
+    root.onkeydown = event => {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      event.preventDefault();
+      refresh(root);
+    };
+
     render(root, window.weatherService.createLoadingWeather());
-    const cached = window.weatherService.getCachedWeather();
+    const cached = window.weatherService.getCachedWeather() || window.weatherService.getAnyCachedWeather();
 
     if (cached) {
       render(root, cached);
@@ -115,7 +132,13 @@
     if (!root) return;
     root.innerHTML = '';
     root.hidden = true;
+    root.removeAttribute('role');
+    root.removeAttribute('tabindex');
+    root.removeAttribute('title');
+    root.onclick = null;
+    root.onkeydown = null;
     lastWeather = null;
+    refreshPromise = null;
   }
 
   window.weatherWidget = {
