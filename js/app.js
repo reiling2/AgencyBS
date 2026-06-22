@@ -101,6 +101,10 @@ const MATERIAL_STATUSES = [
   { value: 'received', label: 'есть' }
 ];
 
+const FILE_PREVIEW_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'pdf', 'mp4', 'webm', 'txt', 'csv', 'json'];
+const MAX_FILE_PREVIEW_BYTES = 50 * 1024 * 1024;
+const MAX_TEXT_PREVIEW_BYTES = 1024 * 1024;
+
 const BRIEF_SECTIONS = [
   'Квалификация клиента',
   'Опыт сотрудничества с маркетологами, запуска рекламы',
@@ -157,11 +161,43 @@ function normalizeState(next) {
   };
 }
 
+function sanitizeAvitoApi(data = {}) {
+  const publicKeys = new Set(['connected', 'accountName', 'profileId', 'apiComment', 'lastSyncAt']);
+  return Object.fromEntries(Object.entries(data || {}).filter(([key]) => publicKeys.has(key)));
+}
+
+function normalizeProjectFile(projectId, file = {}) {
+  const extension = getFileExtension(file);
+  return {
+    ...file,
+    id: file.id || uid('file'),
+    projectId,
+    name: file.name || 'Файл',
+    type: file.type || extension || 'file',
+    size: Number(file.size || 0),
+    extension,
+    storageKey: file.storageKey || '',
+    previewAvailable: Boolean(file.previewAvailable ?? FILE_PREVIEW_EXTENSIONS.includes(extension)),
+    createdAt: file.createdAt || new Date().toISOString()
+  };
+}
+
+function normalizeProjectFiles(projectId, files = []) {
+  const savedFiles = window.fileService?.listFiles?.(projectId) || [];
+  const map = new Map();
+  [...files, ...savedFiles].forEach(file => {
+    const normalized = normalizeProjectFile(projectId, file);
+    map.set(normalized.id, { ...(map.get(normalized.id) || {}), ...normalized });
+  });
+  return [...map.values()].sort((left, right) => new Date(right.createdAt) - new Date(left.createdAt));
+}
+
 function normalizeProject(project) {
   const isDemoProject = project.id === 'demo-project';
   const email = isDemoProject && project.email === DEMO_EMAIL ? '' : (project.email || '');
+  const projectId = project.id || uid('project');
   const normalized = {
-    id: project.id || uid('project'),
+    id: projectId,
     title: project.title || 'Новый проект',
     niche: project.niche || '',
     status: PROJECT_STATUSES.includes(project.status) ? project.status : 'Подготовка к запуску',
@@ -175,9 +211,10 @@ function normalizeProject(project) {
     comment: project.comment || '',
     stages: Array.isArray(project.stages) ? project.stages : DEFAULT_STAGES.map(s => ({ ...s, completed: false })),
     materials: Array.isArray(project.materials) ? project.materials : MATERIAL_ITEMS.map(item => ({ ...item, status: 'unspecified', note: '' })),
-    files: Array.isArray(project.files) ? project.files : [],
-    avitoApi: project.avitoApi || {},
+    files: normalizeProjectFiles(projectId, Array.isArray(project.files) ? project.files : []),
+    avitoApi: sanitizeAvitoApi(project.avitoApi),
     brief: project.brief || {},
+    reports: Array.isArray(project.reports) ? project.reports : [],
     calculations: Array.isArray(project.calculations) ? project.calculations : [],
     reminder: project.reminder || null,
     createdAt: project.createdAt || new Date().toISOString(),
@@ -294,6 +331,67 @@ function badgeClass(status) {
   if (status === 'Архив') return 'gray';
   if (status === 'Бриф') return 'purple';
   return 'blue';
+}
+
+function getProjectStatusKey(status) {
+  const map = {
+    'Подготовка к запуску': 'preparing',
+    'Запуск': 'launch',
+    'В работе': 'active',
+    'Бриф': 'brief',
+    'Продление': 'renewal',
+    'Условный отказник': 'conditional_refusal',
+    'Отказник': 'refusal',
+    'Архив': 'archive'
+  };
+  return map[status] || 'preparing';
+}
+
+function getFileExtension(file = {}) {
+  return String(file.extension || file.name?.split('.').pop() || '').toLowerCase();
+}
+
+function getFileTypeLabel(file = {}) {
+  const extension = getFileExtension(file);
+  if (extension) return extension.toUpperCase();
+  const type = String(file.type || '').toLowerCase();
+  if (type.startsWith('image/')) return 'IMG';
+  if (type.startsWith('video/')) return (type.split('/').pop() || 'VIDEO').toUpperCase();
+  if (type.includes('pdf')) return 'PDF';
+  if (type.includes('wordprocessingml') || type.includes('msword')) return 'DOCX';
+  if (type.includes('spreadsheetml') || type.includes('excel')) return 'XLSX';
+  if (type.includes('presentationml') || type.includes('powerpoint')) return 'PPTX';
+  if (type.startsWith('text/')) return 'TXT';
+  return 'FILE';
+}
+
+function formatFileSize(size) {
+  const value = Number(size || 0);
+  if (!value) return '0 Б';
+  const units = ['Б', 'КБ', 'МБ', 'ГБ'];
+  const index = Math.min(units.length - 1, Math.floor(Math.log(value) / Math.log(1024)));
+  return `${(value / Math.pow(1024, index)).toFixed(index ? 1 : 0)} ${units[index]}`;
+}
+
+function formatFileDate(value) {
+  if (!value) return '—';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '—';
+  return date.toLocaleDateString('ru-RU', { day: '2-digit', month: 'short', year: 'numeric' }).replace('.', '');
+}
+
+function getFilePreviewKind(file = {}) {
+  const extension = getFileExtension(file);
+  if (['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(extension)) return 'image';
+  if (extension === 'pdf') return 'pdf';
+  if (['mp4', 'webm'].includes(extension)) return 'video';
+  if (['txt', 'csv', 'json'].includes(extension)) return 'text';
+  if (['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'].includes(extension)) return 'office';
+  return 'unsupported';
+}
+
+function canPreviewFile(file = {}) {
+  return ['image', 'pdf', 'video', 'text'].includes(getFilePreviewKind(file));
 }
 
 function setView(view, options = {}) {
@@ -498,7 +596,7 @@ function renderProjectCard() {
       </div>` : ''}
 
     <div class="project-command-grid">
-      <div class="command-card accent"><span>Статус</span><strong>${esc(project.status)}</strong><small>${project.reminder?.active ? `Звонок: ${esc(project.reminder.nextCallDate)}` : 'Без напоминания'}</small></div>
+      <div class="command-card project-status-card" data-status="${esc(getProjectStatusKey(project.status))}"><span>СТАТУС</span><strong>${esc(project.status)}</strong><small>${project.reminder?.active ? `Звонок: ${esc(project.reminder.nextCallDate)}` : 'Без напоминания'}</small></div>
       <div class="command-card"><span>Этапы</span><strong>${completedCount}/${project.stages.length}</strong><small>${stageProgress}% выполнено</small></div>
       <div class="command-card"><span>Материалы</span><strong>${materialReady}/${project.materials.length}</strong><small>${materialWaiting ? `Ожидаем: ${materialWaiting}` : 'Нет ожидающих'}</small></div>
       <div class="command-card"><span>Оплата</span><strong>${esc(moneyLabel)}</strong><small>${esc(project.paymentType || 'Тип оплаты не указан')}</small></div>
@@ -523,7 +621,7 @@ function renderProjectCard() {
       </div>
 
       <div class="card project-stages-card">
-        <div class="card-head"><div><h2>Этапы проекта</h2><div class="card-subtitle">Фокус на ближайших активных шагах. Выполненные этапы можно показать снова.</div></div><button class="btn small" id="toggleAllStages">${showAllStages ? 'Скрыть выполненные' : 'Показать все этапы'}</button></div>
+        <div class="card-head"><div><h2>Этапы проекта</h2></div><button class="btn small" id="toggleAllStages">${showAllStages ? 'Скрыть выполненные' : 'Показать все этапы'}</button></div>
         <div class="stage-progress"><div><span style="width:${stageProgress}%"></span></div><strong>${stageProgress}%</strong></div>
         <div class="stage-list">
           ${activeStages.length ? activeStages.map(stage => {
@@ -536,43 +634,60 @@ function renderProjectCard() {
       <div class="card project-materials-card">
         <div class="card-head"><div><h2>Материалы</h2><div class="card-subtitle">Компактный чек-лист: что есть, что ожидаем, что не указано.</div></div></div>
         <div class="materials-grid">
-          ${project.materials.map(item => `<div class="material-card ${esc(item.status)}"><label class="material-check"><span>${esc(item.label)}</span><select class="material-status" data-material-status="${esc(item.key)}">${MATERIAL_STATUSES.map(status => `<option value="${esc(status.value)}" ${status.value === item.status ? 'selected' : ''}>${esc(status.label)}</option>`).join('')}</select></label></div>`).join('')}
+          ${project.materials.map(item => `
+            <div class="material-card ${esc(item.status)}">
+              <label class="material-check"><span>${esc(item.label)}</span><select class="material-status" data-material-status="${esc(item.key)}">${MATERIAL_STATUSES.map(status => `<option value="${esc(status.value)}" ${status.value === item.status ? 'selected' : ''}>${esc(status.label)}</option>`).join('')}</select></label>
+              <input class="material-note" data-material-note="${esc(item.key)}" value="${esc(item.note || '')}" placeholder="Комментарий" autocomplete="off" />
+            </div>
+          `).join('')}
         </div>
       </div>
 
-      <div class="card project-files-card">
-        <div class="card-head"><div><h2>Файлы</h2><div class="card-subtitle">Брифы, таблицы, фото, видео, архивы и рабочие документы проекта.</div></div><button class="btn primary" id="addProjectFiles">Добавить</button></div>
-        <div id="dynamicFileInput"></div>
-        <div class="files-dropzone ${project.files.length ? 'has-files' : ''}">
-          ${project.files.length ? `<div class="files-list">${project.files.map(file => `<div class="file-row"><div><strong>${esc(file.name)}</strong><span>${esc(file.type || 'Файл')} - ${esc(file.createdAt?.slice(0, 10) || '')}</span></div><div class="actions">${file.dataUrl ? `<button class="btn small" data-download-file="${esc(file.id)}">Скачать</button>` : ''}<button class="btn small danger" data-delete-file="${esc(file.id)}">Удалить</button></div></div>`).join('')}</div>` : `Файлы ещё не загружены. Можно добавить запись встречи, бриф, презентацию, фото, документы или таблицы.`}
-        </div>
-      </div>
+      ${renderProjectFiles(project)}
+
+      ${renderProjectSavedWork(project)}
 
       <div class="card accordion project-api-card" id="apiAccordion">
-        <div class="card-head"><div><h2>API / Авито</h2><div class="card-subtitle">Заготовка подключения под backend. Секреты в production нельзя хранить во frontend.</div></div><button class="btn small" id="toggleApi">Открыть</button></div>
+        <div class="card-head"><div><h2>API / Авито</h2><div class="card-subtitle">UI-заготовка под backend-подключение без хранения токенов во frontend.</div></div><button class="btn small" id="toggleApi" type="button">Открыть</button></div>
         <div class="accordion-body">
-          <div class="details-grid">
-            ${apiField('accountName', 'Название аккаунта Авито', project.avitoApi.accountName || '')}
+          <div class="api-summary-grid">
+            <div class="api-summary-item"><span>Статус подключения</span><strong>${project.avitoApi.connected ? 'Подключено' : 'Не подключено'}</strong></div>
+            <div class="api-summary-item"><span>Аккаунт</span><strong>${esc(project.avitoApi.accountName || 'Не указан')}</strong></div>
+            <div class="api-summary-item"><span>ID профиля</span><strong>${esc(project.avitoApi.profileId || '—')}</strong></div>
+            <div class="api-summary-item"><span>Последняя синхронизация</span><strong>${esc(project.avitoApi.lastSyncAt ? formatFileDate(project.avitoApi.lastSyncAt) : '—')}</strong></div>
+          </div>
+          <div class="details-grid api-fields-grid">
+            ${apiField('accountName', 'Аккаунт / название', project.avitoApi.accountName || '')}
             ${apiField('profileId', 'ID профиля / аккаунта', project.avitoApi.profileId || '')}
-            ${apiField('clientId', 'client_id', project.avitoApi.clientId || '')}
-            ${apiField('clientSecret', 'client_secret', project.avitoApi.clientSecret || '', 'password')}
-            ${apiField('accessToken', 'access token', project.avitoApi.accessToken || '', 'password')}
-            ${apiField('refreshToken', 'refresh token', project.avitoApi.refreshToken || '', 'password')}
             <label class="field wide"><span>Комментарий по подключению</span><textarea data-api-field="apiComment" rows="3">${esc(project.avitoApi.apiComment || '')}</textarea></label>
           </div>
-          <div class="actions" style="margin-top:14px;"><button class="btn primary" id="saveApiBtn">Сохранить подключение</button><button class="btn soft" id="mockCheckApiBtn">Проверить подключение</button></div>
-          <p class="muted">В боевой версии секреты Авито должны храниться на backend и защищённо сохраняться в БД.</p>
+          <div class="actions api-actions"><button class="btn primary" id="saveApiBtn" type="button">Обновить</button><button class="btn soft" id="mockCheckApiBtn" type="button">Подключить</button></div>
+          <p class="muted">Секретные ключи подключаются только через backend и не сохраняются во frontend.</p>
         </div>
-      </div>
-
-      <div class="card saved-calculations-card">
-        <div class="card-head"><div><h2>Сохранённые расчёты</h2><div class="card-subtitle">Ключевые KPI из калькулятора, сохранённые в проект.</div></div><span class="badge blue">${project.calculations.length} расч.</span></div>
-        <div class="saved-calc-grid">${project.calculations.length ? project.calculations.slice().reverse().map(calc => savedCalcCard(calc)).join('') : `<div class="empty"><strong>Расчётов пока нет</strong>Открой калькулятор и сохрани результат в проект.</div>`}</div>
       </div>
     </div>
   `;
 
   bindProjectCardEvents(project);
+  requestAnimationFrame(syncProjectTopCardsHeight);
+}
+
+function syncProjectTopCardsHeight() {
+  const infoCard = document.querySelector('.project-info-card');
+  const stagesCard = document.querySelector('.project-stages-card');
+  const stagesList = stagesCard?.querySelector('.stage-list');
+  if (!infoCard || !stagesCard) return;
+  stagesCard.style.height = '';
+  if (stagesList) stagesList.style.maxHeight = '';
+  if (!window.matchMedia('(min-width: 1101px)').matches) return;
+  const targetHeight = Math.ceil(infoCard.offsetHeight);
+  stagesCard.style.height = `${targetHeight}px`;
+  if (!stagesList) return;
+  const listTop = stagesList.offsetTop;
+  const styles = window.getComputedStyle(stagesCard);
+  const paddingBottom = parseFloat(styles.paddingBottom) || 0;
+  const availableListHeight = Math.max(160, targetHeight - listTop - paddingBottom);
+  stagesList.style.maxHeight = `${Math.floor(availableListHeight)}px`;
 }
 
 function savedCalcCard(calc) {
@@ -589,6 +704,86 @@ function savedCalcCard(calc) {
         <div><span>CPC</span><strong>${formatMoney(calc.cpc)}</strong></div>
         <div><span>Жел. CPC</span><strong>${formatMoney(calc.desiredCpc)}</strong></div>
         <div><span>CPL</span><strong>${formatMoney(calc.cpl)}</strong></div>
+      </div>
+    </div>
+  `;
+}
+
+function savedReportCard(report) {
+  return `
+    <div class="saved-report-card">
+      <div>
+        <strong>${esc(report.title || 'Отчёт')}</strong>
+        <span>${esc(report.type || 'Рабочий отчёт')}</span>
+      </div>
+      <span>${esc(report.createdAt ? report.createdAt.slice(0, 10) : '—')}</span>
+    </div>
+  `;
+}
+
+function renderProjectSavedWork(project) {
+  const reports = Array.isArray(project.reports) ? project.reports : [];
+  const calculations = Array.isArray(project.calculations) ? project.calculations : [];
+  return `
+    <div class="card saved-calculations-card">
+      <div class="card-head">
+        <div>
+          <h2>Сохранённые отчёты и расчёты</h2>
+          <div class="card-subtitle">Отчёты и расчёты разделены внутри одного рабочего блока проекта.</div>
+        </div>
+        <div class="saved-work-badges">
+          <span class="badge gray">${reports.length} отч.</span>
+          <span class="badge blue">${calculations.length} расч.</span>
+        </div>
+      </div>
+      <div class="saved-work-grid">
+        <section class="saved-work-section">
+          <div class="saved-work-head"><h3>Отчёты</h3><span>${reports.length}</span></div>
+          <div class="saved-work-list">
+            ${reports.length ? reports.slice().reverse().map(report => savedReportCard(report)).join('') : `<div class="saved-work-empty"><strong>Отчётов пока нет</strong><span>Когда отчёт будет сохранён в проект, он появится здесь.</span></div>`}
+          </div>
+        </section>
+        <section class="saved-work-section">
+          <div class="saved-work-head"><h3>Расчёты</h3><span>${calculations.length}</span></div>
+          <div class="saved-calc-grid">${calculations.length ? calculations.slice().reverse().map(calc => savedCalcCard(calc)).join('') : `<div class="saved-work-empty"><strong>Расчётов пока нет</strong><span>Открой калькулятор и сохрани результат в проект.</span></div>`}</div>
+        </section>
+      </div>
+    </div>
+  `;
+}
+
+function renderProjectFiles(project) {
+  const files = project.files || [];
+  return `
+    <div class="card project-files-card">
+      <div class="card-head">
+        <div><h2>Файлы проекта</h2><div class="card-subtitle">Брифы, презентации, фото, документы, таблицы и рабочие материалы.</div></div>
+        <button class="btn primary" id="addProjectFiles" type="button">Загрузить файлы</button>
+      </div>
+      <div id="dynamicFileInput"></div>
+      <div class="files-dropzone ${files.length ? 'has-files' : ''}" data-file-dropzone="${esc(project.id)}">
+        ${files.length ? `
+          <div class="files-list">
+            ${files.map(file => `
+              <div class="file-row" data-file-row="${esc(file.id)}">
+                <div class="file-type-icon">${esc(getFileTypeLabel(file))}</div>
+                <div class="file-main">
+                  <strong>${esc(file.name)}</strong>
+                  <span>${esc(getFileTypeLabel(file))} · ${esc(formatFileSize(file.size))} · ${esc(formatFileDate(file.createdAt))}</span>
+                </div>
+                <div class="file-actions">
+                  <button class="btn small" type="button" data-open-file="${esc(file.id)}">Открыть</button>
+                  <button class="btn small" type="button" data-download-file="${esc(file.id)}">Скачать</button>
+                  <button class="btn small danger" type="button" data-delete-file="${esc(file.id)}">Удалить</button>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        ` : `
+          <div class="files-empty-state">
+            <p>Файлы еще не загружены. Можно добавить запись встречи, бриф, презентацию, фото, документы или таблицы.</p>
+          </div>
+        `}
       </div>
     </div>
   `;
@@ -637,24 +832,50 @@ function bindProjectCardEvents(project) {
     saveState();
     renderProjectCard();
   }));
-  document.getElementById('toggleApi')?.addEventListener('click', () => document.getElementById('apiAccordion')?.classList.toggle('open'));
+  document.getElementById('toggleApi')?.addEventListener('click', event => {
+    const accordion = document.getElementById('apiAccordion');
+    accordion?.classList.toggle('open');
+    event.currentTarget.textContent = accordion?.classList.contains('open') ? 'Свернуть' : 'Открыть';
+  });
   document.getElementById('saveApiBtn')?.addEventListener('click', () => {
     document.querySelectorAll('[data-api-field]').forEach(input => { project.avitoApi[input.dataset.apiField] = input.value; });
     project.avitoApi.updatedAt = new Date().toISOString();
     saveState();
-    alert('Данные подключения сохранены в демо-режиме. В боевой версии это уйдёт на backend.');
+    renderProjectCard();
   });
-  document.getElementById('mockCheckApiBtn')?.addEventListener('click', () => alert('Демо-проверка: в боевой версии backend проверит подключение к Авито API.'));
+  document.getElementById('mockCheckApiBtn')?.addEventListener('click', () => {
+    project.avitoApi.connected = true;
+    project.avitoApi.lastSyncAt = new Date().toISOString();
+    saveState();
+    renderProjectCard();
+  });
   document.getElementById('addProjectFiles')?.addEventListener('click', () => createProjectFileInput(project.id));
-  document.querySelectorAll('[data-delete-file]').forEach(btn => btn.addEventListener('click', () => {
-    project.files = project.files.filter(file => file.id !== btn.dataset.deleteFile);
-    window.fileService?.removeFile?.(btn.dataset.deleteFile);
+  const dropzone = document.querySelector('[data-file-dropzone]');
+  if (dropzone) {
+    ['dragenter', 'dragover'].forEach(type => dropzone.addEventListener(type, event => {
+      event.preventDefault();
+      dropzone.classList.add('is-dragover');
+    }));
+    ['dragleave', 'drop'].forEach(type => dropzone.addEventListener(type, event => {
+      event.preventDefault();
+      if (type === 'drop') addFilesToProject(project.id, [...(event.dataTransfer?.files || [])]);
+      dropzone.classList.remove('is-dragover');
+    }));
+  }
+  document.querySelectorAll('[data-delete-file]').forEach(btn => btn.addEventListener('click', async () => {
+    const file = project.files.find(item => item.id === btn.dataset.deleteFile);
+    project.files = project.files.filter(item => item.id !== btn.dataset.deleteFile);
+    if (file?.id) await window.fileService?.removeFile?.(file.id);
     saveState();
     renderProjectCard();
   }));
-  document.querySelectorAll('[data-download-file]').forEach(btn => btn.addEventListener('click', () => {
+  document.querySelectorAll('[data-download-file]').forEach(btn => btn.addEventListener('click', async () => {
     const file = project.files.find(item => item.id === btn.dataset.downloadFile);
-    if (file?.dataUrl) downloadDataUrl(file.dataUrl, file.name);
+    await downloadProjectFile(file);
+  }));
+  document.querySelectorAll('[data-open-file]').forEach(btn => btn.addEventListener('click', async () => {
+    const file = project.files.find(item => item.id === btn.dataset.openFile);
+    await openProjectFilePreview(file);
   }));
 }
 
@@ -697,25 +918,174 @@ function createProjectFileInput(projectId) {
 function addFilesToProject(projectId, files) {
   const project = state.projects.find(item => item.id === projectId);
   if (!project || !files.length) return;
-  let pending = files.length;
   files.forEach(file => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const nextFile = { id: uid('file'), name: file.name, type: file.type || 'file', size: file.size, dataUrl: reader.result, storageKey: reader.result, createdAt: new Date().toISOString() };
-      project.files.push(nextFile);
-      window.fileService?.addFile?.(projectId, nextFile);
-      pending -= 1;
-      if (!pending) { saveState(); renderProjectCard(); }
-    };
-    reader.onerror = () => {
-      const nextFile = { id: uid('file'), name: file.name, type: file.type || 'file', size: file.size, createdAt: new Date().toISOString() };
-      project.files.push(nextFile);
-      window.fileService?.addFile?.(projectId, nextFile);
-      pending -= 1;
-      if (!pending) { saveState(); renderProjectCard(); }
-    };
-    reader.readAsDataURL(file);
+    const id = uid('file');
+    const extension = String(file.name.split('.').pop() || '').toLowerCase();
+    const storageKey = `project-file:${projectId}:${id}`;
+    const nextFile = window.fileModel.createFile({
+      id,
+      projectId,
+      name: file.name,
+      type: file.type || extension || 'file',
+      size: file.size,
+      extension,
+      storageKey,
+      blob: file,
+      createdAt: new Date().toISOString()
+    });
+    project.files.push(nextFile);
+    window.fileService?.addFile?.(projectId, { ...nextFile, blob: file });
   });
+  project.updatedAt = new Date().toISOString();
+  saveState();
+  renderProjectCard();
+}
+
+function ensureFilePreviewModal() {
+  let modal = document.getElementById('filePreviewModal');
+  if (modal) return modal;
+  modal = document.createElement('div');
+  modal.id = 'filePreviewModal';
+  modal.className = 'modal-backdrop file-preview-backdrop';
+  modal.setAttribute('aria-hidden', 'true');
+  modal.innerHTML = `
+    <div class="modal abs-modal file-preview-modal wide" role="dialog" aria-modal="true" aria-labelledby="filePreviewTitle">
+      <div class="modal-header file-preview-head">
+        <div class="modal-title-group">
+          <div class="modal-mark file-preview-mark" id="filePreviewMark">FILE</div>
+          <div>
+            <h2 class="modal-title" id="filePreviewTitle">Предпросмотр</h2>
+            <div class="file-meta" id="filePreviewMeta"></div>
+          </div>
+        </div>
+        <div class="modal-actions file-preview-actions">
+          <button class="btn soft" id="downloadPreviewFile" type="button">Скачать</button>
+          <button class="modal-close" id="closeFilePreview" aria-label="Закрыть">×</button>
+        </div>
+      </div>
+      <div class="modal-body">
+        <div class="preview-zone file-preview-body" id="filePreviewBody"></div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  modal.querySelector('#closeFilePreview')?.addEventListener('click', closeFilePreviewModal);
+  modal.addEventListener('click', event => {
+    if (event.target === modal) closeFilePreviewModal();
+  });
+  return modal;
+}
+
+function closeFilePreviewModal() {
+  const modal = document.getElementById('filePreviewModal');
+  if (!modal) return;
+  const body = modal.querySelector('#filePreviewBody');
+  const objectUrl = body?.dataset.objectUrl;
+  if (objectUrl) URL.revokeObjectURL(objectUrl);
+  if (body) {
+    body.dataset.objectUrl = '';
+    body.innerHTML = '';
+  }
+  if (window.absModal?.close) {
+    window.absModal.close('filePreviewModal');
+  } else {
+    modal.classList.remove('active');
+    modal.setAttribute('aria-hidden', 'true');
+  }
+}
+
+async function getProjectFileBlob(file) {
+  if (!file) return null;
+  return window.fileService?.getFileBlob ? window.fileService.getFileBlob(file) : null;
+}
+
+async function downloadProjectFile(file) {
+  if (!file) return;
+  const blob = await getProjectFileBlob(file);
+  if (blob) {
+    const url = URL.createObjectURL(blob);
+    downloadDataUrl(url, file.name);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    return;
+  }
+  if (file.dataUrl) downloadDataUrl(file.dataUrl, file.name);
+}
+
+async function openProjectFilePreview(file) {
+  if (!file) return;
+  const modal = ensureFilePreviewModal();
+  const title = modal.querySelector('#filePreviewTitle');
+  const meta = modal.querySelector('#filePreviewMeta');
+  const mark = modal.querySelector('#filePreviewMark');
+  const body = modal.querySelector('#filePreviewBody');
+  const downloadButton = modal.querySelector('#downloadPreviewFile');
+  const fileTypeLabel = getFileTypeLabel(file);
+  title.textContent = file.name || 'Файл';
+  mark.textContent = fileTypeLabel;
+  const pill = document.createElement('span');
+  const size = document.createElement('span');
+  const date = document.createElement('span');
+  pill.className = 'file-pill';
+  pill.textContent = fileTypeLabel;
+  size.textContent = formatFileSize(file.size);
+  date.textContent = formatFileDate(file.createdAt);
+  meta.replaceChildren(pill, size, date);
+  body.innerHTML = '<div class="file-preview-empty">Загрузка предпросмотра...</div>';
+  body.dataset.objectUrl = '';
+  downloadButton.onclick = () => downloadProjectFile(file);
+  if (window.absModal?.open) {
+    window.absModal.open('filePreviewModal');
+  } else {
+    modal.classList.add('active');
+    modal.setAttribute('aria-hidden', 'false');
+  }
+
+  const kind = getFilePreviewKind(file);
+  if (kind === 'office' || kind === 'unsupported' || !canPreviewFile(file)) {
+    body.innerHTML = '<div class="file-preview-empty"><strong>Предпросмотр недоступен</strong><span>Файл можно скачать или открыть, если браузер поддерживает этот формат.</span></div>';
+    return;
+  }
+
+  const blob = await getProjectFileBlob(file);
+  if (!blob) {
+    body.innerHTML = '<div class="file-preview-empty"><strong>Предпросмотр недоступен</strong><span>Файл можно скачать, если он был загружен в старом формате.</span></div>';
+    return;
+  }
+
+  if (Number(file.size || blob.size || 0) > MAX_FILE_PREVIEW_BYTES) {
+    body.innerHTML = '<div class="file-preview-empty"><strong>Предпросмотр недоступен</strong><span>Файл слишком большой для предпросмотра.</span></div>';
+    return;
+  }
+
+  if (kind === 'text') {
+    if (Number(file.size || blob.size || 0) > MAX_TEXT_PREVIEW_BYTES) {
+      body.innerHTML = '<div class="file-preview-empty"><strong>Предпросмотр недоступен</strong><span>Текстовый файл слишком большой.</span></div>';
+      return;
+    }
+    const paper = document.createElement('div');
+    paper.className = 'preview-paper';
+    const pre = document.createElement('pre');
+    pre.className = 'file-preview-text';
+    pre.textContent = await blob.text();
+    body.innerHTML = '';
+    paper.appendChild(pre);
+    body.appendChild(paper);
+    return;
+  }
+
+  const objectUrl = URL.createObjectURL(blob);
+  body.dataset.objectUrl = objectUrl;
+  if (kind === 'image') {
+    body.innerHTML = `<div class="preview-paper preview-paper-media"><img class="file-preview-image" src="${objectUrl}" alt="${esc(file.name)}"></div>`;
+    return;
+  }
+  if (kind === 'pdf') {
+    body.innerHTML = `<div class="preview-paper preview-paper-media"><iframe class="file-preview-frame" src="${objectUrl}" title="${esc(file.name)}"></iframe></div>`;
+    return;
+  }
+  if (kind === 'video') {
+    body.innerHTML = `<div class="preview-paper preview-paper-media"><video class="file-preview-video" src="${objectUrl}" controls></video></div>`;
+  }
 }
 
 function renderBrief() {
@@ -772,17 +1142,24 @@ function saveBriefWord(project) {
       ${BRIEF_SECTIONS.map(section => `<h2>${esc(section)}</h2><p>${esc(project.brief[section] || 'Не заполнено').replace(/\n/g, '<br>')}</p>`).join('')}
     </body></html>`;
   const blob = new Blob(['\ufeff', html], { type: 'application/msword' });
-  const reader = new FileReader();
-  reader.onload = () => {
-    const file = { id: uid('file'), name: `Бриф — ${project.title}.doc`, type: 'application/msword', dataUrl: reader.result, storageKey: reader.result, createdAt: new Date().toISOString() };
-    project.files.push(file);
-    window.briefService?.save?.(project.id, project.brief);
-    window.briefService?.addWordFile?.(project.id, file);
-    saveState();
-    alert('Бриф сохранён в файлы проекта.');
-    renderBrief();
-  };
-  reader.readAsDataURL(blob);
+  const id = uid('file');
+  const file = window.fileModel.createFile({
+    id,
+    projectId: project.id,
+    name: `Бриф — ${project.title}.doc`,
+    type: 'application/msword',
+    size: blob.size,
+    extension: 'doc',
+    storageKey: `project-file:${project.id}:${id}`,
+    blob,
+    createdAt: new Date().toISOString()
+  });
+  project.files.push(file);
+  window.briefService?.save?.(project.id, project.brief);
+  window.briefService?.addWordFile?.(project.id, { ...file, blob });
+  saveState();
+  alert('Бриф сохранён в файлы проекта.');
+  renderBrief();
 }
 
 function renderStats() {
@@ -1040,14 +1417,22 @@ function openProjectModal() {
   const modal = document.getElementById('projectModal');
   document.querySelector('[name="status"]').innerHTML = PROJECT_STATUSES.map(status => `<option>${esc(status)}</option>`).join('');
   document.querySelector('[name="paymentDate"]').value = new Date().toISOString().slice(0, 10);
-  modal.classList.add('active');
-  modal.setAttribute('aria-hidden', 'false');
+  if (window.absModal?.open) {
+    window.absModal.open('projectModal');
+  } else {
+    modal.classList.add('active');
+    modal.setAttribute('aria-hidden', 'false');
+  }
 }
 
 function closeProjectModal() {
   const modal = document.getElementById('projectModal');
-  modal.classList.remove('active');
-  modal.setAttribute('aria-hidden', 'true');
+  if (window.absModal?.close) {
+    window.absModal.close('projectModal');
+  } else {
+    modal.classList.remove('active');
+    modal.setAttribute('aria-hidden', 'true');
+  }
   document.getElementById('projectForm').reset();
 }
 
@@ -1136,6 +1521,7 @@ function init() {
   document.getElementById('closeProjectModal')?.addEventListener('click', closeProjectModal);
   document.getElementById('cancelProjectModal')?.addEventListener('click', closeProjectModal);
   document.getElementById('projectForm')?.addEventListener('submit', createProjectFromForm);
+  window.addEventListener('resize', () => requestAnimationFrame(syncProjectTopCardsHeight));
   render();
 }
 

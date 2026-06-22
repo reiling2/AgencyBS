@@ -62,80 +62,89 @@
   </div>
 
   <div class="modal-backdrop" id="projectModal" aria-hidden="true">
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="projectModalTitle">
-      <button class="modal-close" id="closeProjectModal" aria-label="Закрыть">×</button>
-      <h2 id="projectModalTitle">Новый проект</h2>
-      <p class="muted">Заполни обязательные поля. Эти данные попадут в карточку проекта.</p>
+    <div class="modal abs-modal project-create-modal compact" role="dialog" aria-modal="true" aria-labelledby="projectModalTitle">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <div class="modal-mark">+</div>
+          <div>
+            <h2 class="modal-title" id="projectModalTitle">Новый проект</h2>
+            <p class="modal-subtitle">Заполни обязательные поля. Данные попадут в карточку проекта.</p>
+          </div>
+        </div>
+        <button class="modal-close" id="closeProjectModal" aria-label="Закрыть">×</button>
+      </div>
 
-      <form id="projectForm" class="form-grid" autocomplete="off">
-        <label class="field field-wide">
-          <span>Комментарий *</span>
-          <textarea name="comment" rows="3" required placeholder="Например: что важно по клиенту, оплате, запуску"></textarea>
-        </label>
+      <form id="projectForm" class="project-modal-form" autocomplete="off">
+        <div class="modal-body form-grid">
+          <label class="field field-wide">
+            <span>Комментарий *</span>
+            <textarea name="comment" rows="3" required placeholder="Например: что важно по клиенту, оплате, запуску"></textarea>
+          </label>
 
-        <label class="field">
-          <span>Вид оплаты *</span>
-          <select name="paymentType" required>
-            <option value="">Выбрать</option>
-            <option>Полная оплата</option>
-            <option>Аванс</option>
-            <option>Постоплата</option>
-            <option>Рассрочка</option>
-            <option>Другое</option>
-          </select>
-        </label>
+          <label class="field">
+            <span>Вид оплаты *</span>
+            <select name="paymentType" required>
+              <option value="">Выбрать</option>
+              <option>Полная оплата</option>
+              <option>Аванс</option>
+              <option>Постоплата</option>
+              <option>Рассрочка</option>
+              <option>Другое</option>
+            </select>
+          </label>
 
-        <label class="field">
-          <span>Дата оплаты *</span>
-          <input name="paymentDate" type="date" required />
-        </label>
+          <label class="field">
+            <span>Дата оплаты *</span>
+            <input name="paymentDate" type="date" required />
+          </label>
 
-        <label class="field">
-          <span>Сумма оплаты *</span>
-          <input name="paymentAmount" type="number" min="0" step="1" required placeholder="Например: 50000" />
-        </label>
+          <label class="field">
+            <span>Сумма оплаты *</span>
+            <input name="paymentAmount" type="number" min="0" step="1" required placeholder="Например: 50000" />
+          </label>
 
-        <label class="field">
-          <span>ФИО клиента *</span>
-          <input name="clientName" required placeholder="Иванов Иван" />
-        </label>
+          <label class="field">
+            <span>ФИО клиента *</span>
+            <input name="clientName" required placeholder="Иванов Иван" />
+          </label>
 
-        <label class="field">
-          <span>Вид сделки *</span>
-          <select name="dealType" required>
-            <option value="">Выбрать</option>
-            <option>Запуск</option>
-            <option>Ведение</option>
-            <option>Другое</option>
-          </select>
-        </label>
+          <label class="field">
+            <span>Вид сделки *</span>
+            <select name="dealType" required>
+              <option value="">Выбрать</option>
+              <option>Запуск</option>
+              <option>Ведение</option>
+              <option>Другое</option>
+            </select>
+          </label>
 
-        <label class="field">
-          <span>Номер для связи *</span>
-          <input name="phone" required placeholder="+7 999 000-00-00" />
-        </label>
+          <label class="field">
+            <span>Номер для связи *</span>
+            <input name="phone" required placeholder="+7 999 000-00-00" />
+          </label>
 
-        <label class="field">
-          <span>Электронная почта *</span>
-          <input name="email" type="email" required placeholder="client@example.ru" autocomplete="new-password" />
-        </label>
+          <label class="field">
+            <span>Электронная почта *</span>
+            <input name="email" type="email" required placeholder="client@example.ru" autocomplete="new-password" />
+          </label>
 
-        <label class="field">
-          <span>Название проекта *</span>
-          <input name="title" required placeholder="Например: Пять решений" />
-        </label>
+          <label class="field">
+            <span>Название проекта *</span>
+            <input name="title" required placeholder="Например: Пять решений" />
+          </label>
 
-        <label class="field">
-          <span>Ниша *</span>
-          <input name="niche" required placeholder="Например: Строительство" />
-        </label>
+          <label class="field">
+            <span>Ниша *</span>
+            <input name="niche" required placeholder="Например: Строительство" />
+          </label>
 
-        <label class="field">
-          <span>Статус *</span>
-          <select name="status" required></select>
-        </label>
+          <label class="field">
+            <span>Статус *</span>
+            <select name="status" required></select>
+          </label>
+        </div>
 
-        <div class="modal-actions field-wide">
+        <div class="modal-footer project-modal-footer">
           <button class="btn primary" type="submit">Создать проект</button>
           <button class="btn ghost" type="button" id="cancelProjectModal">Отмена</button>
         </div>

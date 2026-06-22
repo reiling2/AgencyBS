@@ -2,6 +2,7 @@
   'use strict';
 
   const constants = window.ABS_CONSTANTS;
+  const previewFileExtensions = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'pdf', 'mp4', 'webm', 'txt', 'csv', 'json'];
 
   function createEmptyDatabase() {
     return {
@@ -105,13 +106,17 @@
       db.projectMaterials.push(...defaultMaterials(projectId, legacyProject.materials || []));
 
       (legacyProject.files || []).forEach(file => {
+        const name = file.name || 'Файл';
+        const extension = String(file.extension || name.split('.').pop() || '').toLowerCase();
         db.projectFiles.push({
           id: file.id || window.absIds.uid('file'),
           projectId,
-          name: file.name || 'Файл',
+          name,
           type: file.type || '',
           size: Number(file.size || 0),
-          storageKey: file.dataUrl || file.storageKey || '',
+          extension,
+          storageKey: file.storageKey || '',
+          previewAvailable: Boolean(file.previewAvailable ?? previewFileExtensions.includes(extension)),
           createdAt: file.createdAt || now
         });
       });
