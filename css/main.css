@@ -2222,6 +2222,10 @@ select option {
   cursor: pointer;
 }
 
+.settings-toggle + .settings-toggle {
+  margin-top: 10px;
+}
+
 .settings-toggle input {
   width: 17px;
   height: 17px;
