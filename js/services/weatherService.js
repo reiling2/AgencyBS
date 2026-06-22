@@ -33,8 +33,8 @@
     85: { key: 'snow', label: 'Снегопад' },
     86: { key: 'snow', label: 'Сильный снегопад' },
     95: { key: 'thunder', label: 'Гроза' },
-    96: { key: 'thunder', label: 'Гроза с градом' },
-    99: { key: 'thunder', label: 'Сильная гроза с градом' }
+    96: { key: 'hail', label: 'Гроза с градом' },
+    99: { key: 'hail', label: 'Сильная гроза с градом' }
   };
 
   const WEATHER_ICON_CLASS = {
@@ -47,8 +47,8 @@
     'heavy-rain': 'rain heavy-rain',
     thunder: 'thunder',
     snow: 'snow',
-    sleet: 'sleet',
-    hail: 'hail',
+    sleet: 'rain snow',
+    hail: 'snow hail',
     fog: 'fog',
     wind: 'wind',
     night: 'moon',

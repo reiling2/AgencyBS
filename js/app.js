@@ -465,6 +465,7 @@ function render() {
   renderSettings();
   renderKnowledge();
   updateWebsiteNewLeadBadge();
+  requestAnimationFrame(updateSidebarWeatherWidget);
 }
 
 function renderProjects() {

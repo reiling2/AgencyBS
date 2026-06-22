@@ -25,6 +25,14 @@
     };
   }
 
+  function isDisplayValue(value) {
+    return value !== undefined && value !== null && !['undefined', 'NaN', 'Infinity', '-Infinity'].includes(String(value));
+  }
+
+  function safeText(value, fallback = '—') {
+    return isDisplayValue(value) ? value : fallback;
+  }
+
   function shouldShowWeather() {
     return window.settingsApi?.get?.()?.weather?.showSidebarWeather !== false;
   }
@@ -38,33 +46,35 @@
     root.setAttribute('title', 'Обновить погоду');
 
     const weather = normalizeWeather(weatherData || lastWeather || window.weatherService.createLoadingWeather());
+    const weatherKey = safeText(weather.weatherKey, 'unavailable');
+    const iconClass = safeText(weather.iconClass, window.weatherService.WEATHER_ICON_CLASS.unavailable);
     lastWeather = weather;
     root.innerHTML = `
-      <section class="sidebar-weather-card" data-weather="${escapeHtml(weather.weatherKey)}" aria-label="Погода в Санкт-Петербурге">
+      <section class="weather-card" data-weather="${escapeHtml(weatherKey)}" aria-label="Погода в Санкт-Петербурге">
         <div class="weather-top">
           <div>
             <div class="weather-label">Погода</div>
-            <div class="weather-city">${escapeHtml(weather.city)}</div>
+            <div class="weather-city">${escapeHtml(safeText(weather.city, 'Санкт-Петербург'))}</div>
           </div>
           <div class="weather-icon" aria-hidden="true">
-            <div class="weather-glyph ${escapeHtml(weather.iconClass)}"></div>
+            <div class="icon ${escapeHtml(iconClass)}"></div>
           </div>
         </div>
         <div class="weather-main">
-          <div class="weather-temp">${escapeHtml(weather.temperatureLabel)}</div>
-          <div class="weather-condition">${escapeHtml(weather.condition)}</div>
+          <div class="weather-temp">${escapeHtml(safeText(weather.temperatureLabel))}</div>
+          <div class="weather-condition">${escapeHtml(safeText(weather.condition, 'Данные недоступны'))}</div>
         </div>
         <div class="weather-bottom">
           <div class="weather-chip">
             <div class="chip-label">Сегодня</div>
-            <div class="chip-value">${escapeHtml(weather.todayRange)}</div>
+            <div class="chip-value">${escapeHtml(safeText(weather.todayRange))}</div>
           </div>
           <div class="weather-chip">
             <div class="chip-label">Завтра</div>
-            <div class="chip-value">${escapeHtml(weather.tomorrowRange)}</div>
+            <div class="chip-value">${escapeHtml(safeText(weather.tomorrowRange))}</div>
           </div>
         </div>
-        <div class="weather-note">${escapeHtml(weather.updatedLabel)}</div>
+        <div class="weather-note">${escapeHtml(safeText(weather.updatedLabel, 'Нет связи, нажмите для повтора'))}</div>
       </section>
     `;
   }
