@@ -21,28 +21,29 @@
 
   <div class="app-shell">
     <aside class="sidebar" id="sidebar">
-      <div class="brand">
-        <div class="brand-mark">ABS</div>
-        <div>
-          <strong>Agency BS</strong>
-          <span>service panel</span>
+      <div class="sidebar-main">
+        <div class="brand">
+          <div class="brand-mark">ABS</div>
+          <div>
+            <strong>Agency BS</strong>
+            <span>service panel</span>
+          </div>
         </div>
+
+        <nav class="side-nav" aria-label="Главное меню">
+          <button class="nav-item active" data-view="projects">Проекты</button>
+          <button class="nav-item" data-view="project-card">Карточка проекта</button>
+          <button class="nav-item" data-view="stats">Статистика</button>
+          <button class="nav-item" data-view="reports">Отчёты</button>
+          <button class="nav-item" data-view="site">Сайт<span class="sidebar-badge" id="websiteNewLeadBadge" hidden></span></button>
+          <button class="nav-item" data-view="calculator">Калькулятор</button>
+          <button class="nav-item" data-view="settings">Настройки</button>
+          <button class="nav-item" data-view="knowledge">База знаний</button>
+        </nav>
       </div>
 
-      <nav class="side-nav" aria-label="Главное меню">
-        <button class="nav-item active" data-view="projects">Проекты</button>
-        <button class="nav-item" data-view="project-card">Карточка проекта</button>
-        <button class="nav-item" data-view="stats">Статистика</button>
-        <button class="nav-item" data-view="reports">Отчёты</button>
-        <button class="nav-item" data-view="site">Сайт<span class="sidebar-badge" id="websiteNewLeadBadge" hidden></span></button>
-        <button class="nav-item" data-view="calculator">Калькулятор</button>
-        <button class="nav-item" data-view="settings">Настройки</button>
-        <button class="nav-item" data-view="knowledge">База знаний</button>
-      </nav>
-
-      <div class="sidebar-note">
-        <strong>ABS v2 preview</strong>
-        <span>Локальная демо-версия без БД/API. Структура подготовлена под backend.</span>
+      <div class="sidebar-bottom">
+        <div id="sidebarWeatherWidget" class="sidebar-weather-widget" aria-live="polite"></div>
       </div>
     </aside>
 
@@ -178,6 +179,7 @@
   <script src="js/api/settingsApi.js"></script>
   <script src="js/api/knowledgeBaseApi.js"></script>
   <script src="js/api/statisticsApi.js"></script>
+  <script src="js/api/weatherApi.js"></script>
   <script src="js/state.js"></script>
   <script src="js/router.js"></script>
   <script src="js/components/emptyState.js"></script>
@@ -211,6 +213,8 @@
   <script src="js/services/avitoStatsService.js"></script>
   <script src="js/services/websiteStatsService.js"></script>
   <script src="js/services/websiteService.js"></script>
+  <script src="js/services/weatherService.js"></script>
+  <script src="js/components/weatherWidget.js"></script>
   <script src="js/views/projectsView.js"></script>
   <script src="js/views/projectCardView.js"></script>
   <script src="js/views/briefView.js"></script>

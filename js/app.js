@@ -1528,6 +1528,7 @@ function init() {
   document.getElementById('cancelProjectModal')?.addEventListener('click', closeProjectModal);
   document.getElementById('projectForm')?.addEventListener('submit', createProjectFromForm);
   window.addEventListener('resize', () => requestAnimationFrame(syncProjectTopCardsHeight));
+  window.weatherWidget?.init?.('sidebarWeatherWidget');
   render();
 }
 
