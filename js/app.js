@@ -130,6 +130,7 @@ const AVITO_METRICS = [
   { key: 'wallet', label: 'Кошелёк' },
   { key: 'advance', label: 'Аванс' }
 ];
+const PAYMENT_TYPES = window.ABS_CONSTANTS?.paymentTypes || ['На р/с', 'Робокасса', 'Сплит', 'На карту (по реквизитам)', 'Другое'];
 
 const state = loadState();
 let activeProjectId = state.projects[0]?.id || null;
@@ -164,6 +165,11 @@ function normalizeState(next) {
 function sanitizeAvitoApi(data = {}) {
   const publicKeys = new Set(['connected', 'accountName', 'profileId', 'apiComment', 'lastSyncAt']);
   return Object.fromEntries(Object.entries(data || {}).filter(([key]) => publicKeys.has(key)));
+}
+
+function normalizePaymentType(value) {
+  if (!value) return '';
+  return PAYMENT_TYPES.includes(value) ? value : 'Другое';
 }
 
 function normalizeProjectFile(projectId, file = {}) {
@@ -204,7 +210,7 @@ function normalizeProject(project) {
     clientName: project.clientName || '',
     phone: project.phone || '',
     email,
-    paymentType: project.paymentType || '',
+    paymentType: normalizePaymentType(project.paymentType),
     paymentDate: project.paymentDate || '',
     paymentAmount: Number(project.paymentAmount || 0),
     dealType: project.dealType || 'Запуск',
@@ -241,7 +247,7 @@ function createDemoState() {
     clientName: 'Иван Петров',
     phone: '+7 999 000-00-00',
     email: '',
-    paymentType: 'Аванс',
+    paymentType: 'На р/с',
     paymentDate: '2026-06-11',
     paymentAmount: 50000,
     dealType: 'Запуск',
@@ -612,7 +618,7 @@ function renderProjectCard() {
           ${projectField('clientName', 'ФИО клиента', project.clientName)}
           ${projectField('phone', 'Номер для связи', project.phone)}
           ${projectField('email', 'Электронная почта', project.email, 'email')}
-          ${projectSelect('paymentType', 'Вид оплаты', project.paymentType, ['Полная оплата', 'Аванс', 'Постоплата', 'Рассрочка', 'Другое'])}
+          ${projectSelect('paymentType', 'Вид оплаты', project.paymentType, PAYMENT_TYPES)}
           ${projectField('paymentDate', 'Дата оплаты', project.paymentDate, 'date')}
           ${projectField('paymentAmount', 'Сумма оплаты', project.paymentAmount, 'number')}
           ${projectSelect('dealType', 'Вид сделки', project.dealType, ['Запуск', 'Ведение', 'Другое'])}

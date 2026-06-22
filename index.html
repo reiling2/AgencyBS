@@ -85,10 +85,10 @@
             <span>Вид оплаты *</span>
             <select name="paymentType" required>
               <option value="">Выбрать</option>
-              <option>Полная оплата</option>
-              <option>Аванс</option>
-              <option>Постоплата</option>
-              <option>Рассрочка</option>
+              <option>На р/с</option>
+              <option>Робокасса</option>
+              <option>Сплит</option>
+              <option>На карту (по реквизитам)</option>
               <option>Другое</option>
             </select>
           </label>
@@ -156,6 +156,7 @@
     <input class="visually-hidden" id="projectFileInput" type="file" multiple />
   </template>
 
+  <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
   <script src="js/constants.js"></script>
   <script src="js/utils/storage.js"></script>
   <script src="js/utils/security.js"></script>

@@ -3,9 +3,17 @@
 
   const formatters = window.absFormatters;
 
-  function getPeriodRange(period = 'last30', customFrom = '', customTo = '') {
+  function getPeriodRange(period = 'today', customFrom = '', customTo = '') {
     const today = formatters.todayIso();
     const todayDate = new Date(`${today}T00:00:00`);
+
+    if (period === 'today') {
+      return {
+        dateFrom: today,
+        dateTo: today,
+        label: 'Сегодня'
+      };
+    }
 
     if (period === 'custom' && customFrom && customTo && customFrom <= customTo) {
       return { dateFrom: customFrom, dateTo: customTo, label: `${customFrom} — ${customTo}` };

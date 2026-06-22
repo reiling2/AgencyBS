@@ -4,6 +4,11 @@
   const constants = window.ABS_CONSTANTS;
   const previewFileExtensions = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'pdf', 'mp4', 'webm', 'txt', 'csv', 'json'];
 
+  function normalizePaymentType(value) {
+    if (!value) return '';
+    return constants.paymentTypes.includes(value) ? value : 'Другое';
+  }
+
   function createEmptyDatabase() {
     return {
       schemaVersion: constants.schemaVersion,
@@ -93,7 +98,7 @@
         niche: legacyProject.niche || '',
         status: legacyProject.status || 'Подготовка к запуску',
         dealType: legacyProject.dealType || '',
-        paymentType: legacyProject.paymentType || '',
+        paymentType: normalizePaymentType(legacyProject.paymentType),
         paymentDate: legacyProject.paymentDate || '',
         paymentAmount: Number(legacyProject.paymentAmount || 0),
         clientId,
@@ -191,6 +196,7 @@
         ? { ...client, email: '' }
         : client);
     }
+    db.projects = db.projects.map(project => ({ ...project, paymentType: normalizePaymentType(project.paymentType) }));
     return db;
   }
 
@@ -229,6 +235,7 @@
     if (!Array.isArray(next.projects)) next.projects = [];
     next.projects = next.projects.map(project => ({
       ...project,
+      paymentType: normalizePaymentType(project.paymentType),
       stages: Array.isArray(project.stages) && project.stages.length ? project.stages : defaultStages(project.id || window.absIds.uid('project')),
       materials: Array.isArray(project.materials) && project.materials.length ? project.materials : defaultMaterials(project.id || window.absIds.uid('project'))
     }));

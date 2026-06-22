@@ -73,25 +73,11 @@
   }
 
   function exportCurrent(dashboard) {
-    const metrics = window.websiteStatsService.SELECTABLE_METRICS.filter(metric => dashboard.selectedMetrics.includes(metric.key));
-    const headers = ['Период', ...metrics.map(metric => metric.label)];
-    const rows = dashboard.exportRows.map(row => [
-      row.period,
-      ...metrics.map(metric => {
-        const value = row[metric.key];
-        return metric.type === 'percent' ? window.absFormatters.percent(value, 2) : window.absFormatters.number(value);
-      })
-    ]);
-    const date = window.absFormatters.todayIso();
-    const data = [headers, ...rows];
-    if (window.XLSX?.utils) {
-      const sheet = window.XLSX.utils.aoa_to_sheet(data);
-      const book = window.XLSX.utils.book_new();
-      window.XLSX.utils.book_append_sheet(book, sheet, 'Website statistics');
-      window.XLSX.writeFile(book, `website-statistics-${date}.xlsx`);
-      return;
-    }
-    window.exportService.downloadCsv(`website-statistics-${date}.csv`, data);
+    return window.exportService.exportWebsiteStatistics({
+      dateFrom: dashboard.range.dateFrom,
+      dateTo: dashboard.range.dateTo,
+      selectedMetrics: dashboard.selectedMetrics
+    });
   }
 
   window.websiteService = {

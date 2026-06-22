@@ -13,17 +13,24 @@
       .replace(/'/g, '&#039;');
   }
 
-  function readFilters() {
-    const fallbackRange = window.statisticsService.getPeriodRange('last30');
+  function readFilters(resetToToday = false) {
+    const fallbackRange = window.statisticsService.getPeriodRange('today');
     const fallback = {
       projectId: 'all',
-      period: 'last30',
+      period: 'today',
       customFrom: fallbackRange.dateFrom,
       customTo: fallbackRange.dateTo,
       chartMetric: 'leads'
     };
 
-    return { ...fallback, ...(window.statisticsApi.getFilters?.() || {}) };
+    const filters = { ...fallback, ...(window.statisticsApi.getFilters?.() || {}) };
+    if (!resetToToday) return filters;
+    return {
+      ...filters,
+      period: 'today',
+      customFrom: fallbackRange.dateFrom,
+      customTo: fallbackRange.dateTo
+    };
   }
 
   function saveFilters(filters) {
@@ -36,10 +43,6 @@
 
   function isMetricVisible(selectedMetrics, key) {
     return selectedMetrics.includes(key);
-  }
-
-  function getMetricMeta(key) {
-    return window.statisticsApi.getAvailableMetrics().find(metric => metric.key === key) || { key, label: key, type: 'number' };
   }
 
   function formatMetricValue(key, value) {
@@ -406,6 +409,7 @@
           <label class="stats-v6-field">
             <span>Период</span>
             <select id="statsV6Period">
+              <option value="today" ${filters.period === 'today' ? 'selected' : ''}>Сегодня</option>
               <option value="last7" ${filters.period === 'last7' ? 'selected' : ''}>7 дней</option>
               <option value="last30" ${filters.period === 'last30' ? 'selected' : ''}>30 дней</option>
               <option value="month" ${filters.period === 'month' ? 'selected' : ''}>Текущий месяц</option>
@@ -466,7 +470,9 @@
     }
 
     try {
-      const filters = readFilters();
+      const resetPeriod = options.keepPeriod !== true;
+      const filters = readFilters(resetPeriod);
+      if (resetPeriod) saveFilters(filters);
       const range = window.statisticsService.getPeriodRange(filters.period, filters.customFrom, filters.customTo);
       const previousRange = window.statisticsService.getPreviousRange(range);
       const projects = window.statisticsApi.getProjects();
@@ -503,7 +509,7 @@
   function updateFilters(next) {
     const filters = { ...readFilters(), ...next };
     saveFilters(filters);
-    render();
+    render({ keepPeriod: true });
   }
 
   function bindEvents(root, filters, range, metrics, selectedMetrics, rawProjects) {
@@ -538,7 +544,12 @@
     });
 
     root.querySelector('#statsV6Export')?.addEventListener('click', () => {
-      exportCurrentStats(rawProjects, metrics, selectedMetrics);
+      window.exportService.exportAvitoStatistics({
+        projectId: filters.projectId,
+        dateFrom: range.dateFrom,
+        dateTo: range.dateTo,
+        selectedMetrics
+      });
     });
 
     root.querySelectorAll('[data-project-id]').forEach(card => {
@@ -556,43 +567,9 @@
       input.addEventListener('change', () => {
         const nextSelected = [...root.querySelectorAll('[data-stats-metric]:checked')].map(item => item.dataset.statsMetric);
         window.statisticsApi.saveMetricSettings({ selectedMetrics: nextSelected });
-        render();
+        render({ keepPeriod: true });
       });
     });
-  }
-
-  function exportCurrentStats(rawProjects, metrics, selectedMetrics) {
-    const rows = window.statisticsService.buildExportRows(rawProjects, selectedMetrics);
-    const headers = ['Дата', 'Проект', ...selectedMetrics.map(key => getMetricMeta(key).label)];
-    const body = rows.map(row => [
-      row.date,
-      row.projectName,
-      ...selectedMetrics.map(key => formatMetricValue(key, row.values[key]))
-    ]);
-    const fileDate = formatters.todayIso();
-
-    if (window.XLSX) {
-      const worksheet = window.XLSX.utils.aoa_to_sheet([headers, ...body]);
-      const workbook = window.XLSX.utils.book_new();
-      window.XLSX.utils.book_append_sheet(workbook, worksheet, 'Статистика Авито');
-      window.XLSX.writeFile(workbook, `avito-statistics-${fileDate}.xlsx`);
-      return;
-    }
-
-    downloadCsv(`avito-statistics-${fileDate}.csv`, [headers, ...body]);
-  }
-
-  function downloadCsv(filename, rows) {
-    const csv = rows
-      .map(row => row.map(value => `"${String(value ?? '').replace(/"/g, '""')}"`).join(';'))
-      .join('\n');
-    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = filename;
-    link.click();
-    URL.revokeObjectURL(url);
   }
 
   window.statisticsView = {
