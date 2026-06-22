@@ -1,130 +1,251 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-
-  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
-  <meta http-equiv="Pragma" content="no-cache" />
-  <meta http-equiv="Expires" content="0" />
-  <title>Agency Brief Systems v3.9.22</title>
-  <!-- SheetJS loads lazily on Excel import -->
-  <link rel="stylesheet" href="css/main.css?v=3922" />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>ABS v2 — preview</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/main.css" />
 </head>
 <body>
-<noscript><div class="no-js-warning"><b>Для работы кабинета нужен JavaScript.</b><br>Откройте файл в браузере Safari/Chrome, а не в предпросмотре файла.</div></noscript>
-<header class="mobile-header">
-<div class="mobile-brand">
-<div class="logo">ABS</div>
-<div class="mobile-title">
-<b>Agency Brief Systems</b>
-<span id="mobilePageTitle">Проекты</span>
-</div>
-</div>
-<button class="mobile-menu-btn" type="button" aria-label="Открыть меню" aria-expanded="false" onclick="toggleMobileNav()"><span class="mobile-menu-icon" aria-hidden="true"></span></button>
-</header>
-<div class="nav-overlay" onclick="closeMobileNav()">
-</div>
-<div class="app">
-<aside class="sidebar">
-<div class="brand">
-<div class="logo">ABS</div>
-<div>
-<div class="brand-title">Agency Brief<br>Systems</div>
-</div>
-</div>
-<div class="nav" id="nav">
-<button data-view="projects" class="active">
-<span class="icon">▦</span>Проекты</button>
-<button data-view="project">
-<span class="icon">◈</span>Карточка проекта</button>
-<button data-view="brief">
-<span class="icon">◫</span>Бриф</button>
-<button data-view="import">
-<span class="icon">⇪</span>Импорт</button>
-<button data-view="analysis">
-<span class="icon">✦</span>Автоанализ</button>
-<button data-view="report">
-<span class="icon">▣</span>Отчет</button>
-<button data-view="site">
-<span class="icon">◉</span>Сайт</button>
-<button data-view="settings">
-<span class="icon">⚙</span>Настройки</button>
-</div>
-</aside>
-<main class="main">
-<div class="topbar no-print">
-<div class="hgroup">
-<h1 id="pageTitle">Проекты</h1>
-<p id="pageSubtitle">Компактная база проектов и быстрый вход в карточку.</p>
-</div>
-<div class="actions" id="topActions">
-</div>
-</div>
-<section id="view-projects" class="view active">
-<div class="card app-loading"><h2>Загрузка кабинета</h2><p class="muted">Если экран остается пустым, откройте файл через Safari или Chrome, а не через предпросмотр файла.</p></div>
-</section>
-<section id="view-project" class="view">
-</section>
-<section id="view-brief" class="view">
-</section>
-<section id="view-import" class="view">
-</section>
-<section id="view-analysis" class="view">
-</section>
-<section id="view-report" class="view">
-</section>
-<section id="view-site" class="view">
-</section>
-<section id="view-settings" class="view">
-</section>
-</main>
-</div>
-<div class="modal" id="projectModal">
-<div class="modal-card">
-<button class="close" onclick="closeModal('projectModal')">✕</button>
-<h2>Новый проект</h2>
-<p class="muted">Минимально создаем карточку, остальное можно загрузить через Excel или заполнить в брифе.</p>
-<div class="grid cols-2">
-<div class="field">
-<label>Название проекта</label>
-<input id="newTitle" placeholder="Например: Септики МО">
-</div>
-<div class="field">
-<label>Ниша</label>
-<input id="newNiche" placeholder="Например: Строительство">
-</div>
-<div class="field">
-<label>Статус</label>
-<select id="newStatus">
-<option>Бриф</option>
-<option>Автоанализ</option>
-<option>Запуск</option>
-<option>В работе</option>
-<option>Отчет</option>
-</select>
-</div>
-</div>
-<button class="btn primary" onclick="createProject()">Создать проект</button>
-</div>
-</div>
-<div class="toast" id="toast">
-</div>
+  <div class="mobile-topbar">
+    <button class="icon-btn" id="mobileMenuBtn" aria-label="Открыть меню">☰</button>
+    <div>
+      <strong>ABS v2</strong>
+      <span id="mobileTitle">Проекты</span>
+    </div>
+  </div>
 
-  <script src="js/data.js?v=3922"></script>
-  <script src="js/config.js?v=3922"></script>
-  <script src="js/core.js?v=3922"></script>
-  <script src="js/projects.js?v=3922"></script>
-  <script src="js/import.js?v=3922"></script>
-  <script src="js/brief.js?v=3922"></script>
-  <script src="js/algorithms.js?v=3922"></script>
-  <script src="js/analysis.js?v=3922"></script>
-  <script src="js/report.js?v=3922"></script>
-  <script src="js/site.js?v=3922"></script>
-  <script src="js/settings.js?v=3922"></script>
-  <script src="js/files.js?v=3922"></script>
-  <script src="js/export.js?v=3922"></script>
-  <script src="js/bootstrap.js?v=3922"></script>
-  <script src="js/app.js?v=3922"></script>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar">
+      <div class="brand">
+        <div class="brand-mark">ABS</div>
+        <div>
+          <strong>Agency BS</strong>
+          <span>service panel</span>
+        </div>
+      </div>
+
+      <nav class="side-nav" aria-label="Главное меню">
+        <button class="nav-item active" data-view="projects">Проекты</button>
+        <button class="nav-item" data-view="project-card">Карточка проекта</button>
+        <button class="nav-item" data-view="stats">Статистика</button>
+        <button class="nav-item" data-view="reports">Отчёты</button>
+        <button class="nav-item" data-view="site">Сайт</button>
+        <button class="nav-item" data-view="calculator">Калькулятор</button>
+        <button class="nav-item" data-view="settings">Настройки</button>
+        <button class="nav-item" data-view="knowledge">База знаний</button>
+      </nav>
+
+      <div class="sidebar-note">
+        <strong>ABS v2 preview</strong>
+        <span>Локальная демо-версия без БД/API. Структура подготовлена под backend.</span>
+      </div>
+    </aside>
+
+    <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+    <main class="workspace">
+      <section class="view active" id="view-projects"></section>
+      <section class="view" id="view-project-card"></section>
+      <section class="view" id="view-brief"></section>
+      <section class="view" id="view-stats"></section>
+      <section class="view" id="view-reports"></section>
+      <section class="view" id="view-site"></section>
+      <section class="view" id="view-calculator"></section>
+      <section class="view" id="view-settings"></section>
+      <section class="view" id="view-knowledge"></section>
+    </main>
+  </div>
+
+  <div class="modal-backdrop" id="projectModal" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="projectModalTitle">
+      <button class="modal-close" id="closeProjectModal" aria-label="Закрыть">×</button>
+      <h2 id="projectModalTitle">Новый проект</h2>
+      <p class="muted">Заполни обязательные поля. Эти данные попадут в карточку проекта.</p>
+
+      <form id="projectForm" class="form-grid">
+        <label class="field field-wide">
+          <span>Комментарий *</span>
+          <textarea name="comment" rows="3" required placeholder="Например: что важно по клиенту, оплате, запуску"></textarea>
+        </label>
+
+        <label class="field">
+          <span>Вид оплаты *</span>
+          <select name="paymentType" required>
+            <option value="">Выбрать</option>
+            <option>Полная оплата</option>
+            <option>Аванс</option>
+            <option>Постоплата</option>
+            <option>Рассрочка</option>
+            <option>Другое</option>
+          </select>
+        </label>
+
+        <label class="field">
+          <span>Дата оплаты *</span>
+          <input name="paymentDate" type="date" required />
+        </label>
+
+        <label class="field">
+          <span>Сумма оплаты *</span>
+          <input name="paymentAmount" type="number" min="0" step="1" required placeholder="Например: 50000" />
+        </label>
+
+        <label class="field">
+          <span>ФИО клиента *</span>
+          <input name="clientName" required placeholder="Иванов Иван" />
+        </label>
+
+        <label class="field">
+          <span>Вид сделки *</span>
+          <select name="dealType" required>
+            <option value="">Выбрать</option>
+            <option>Запуск</option>
+            <option>Ведение</option>
+            <option>Другое</option>
+          </select>
+        </label>
+
+        <label class="field">
+          <span>Номер для связи *</span>
+          <input name="phone" required placeholder="+7 999 000-00-00" />
+        </label>
+
+        <label class="field">
+          <span>Электронная почта *</span>
+          <input name="email" type="email" required placeholder="client@example.ru" />
+        </label>
+
+        <label class="field">
+          <span>Название проекта *</span>
+          <input name="title" required placeholder="Например: Пять решений" />
+        </label>
+
+        <label class="field">
+          <span>Ниша *</span>
+          <input name="niche" required placeholder="Например: Строительство" />
+        </label>
+
+        <label class="field">
+          <span>Статус *</span>
+          <select name="status" required></select>
+        </label>
+
+        <div class="modal-actions field-wide">
+          <button class="btn primary" type="submit">Создать проект</button>
+          <button class="btn ghost" type="button" id="cancelProjectModal">Отмена</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <template id="fileInputTemplate">
+    <input class="visually-hidden" id="projectFileInput" type="file" multiple />
+  </template>
+
+  <script src="js/constants.js"></script>
+  <script src="js/utils/storage.js"></script>
+  <script src="js/utils/security.js"></script>
+  <script src="js/utils/ids.js"></script>
+  <script src="js/utils/dates.js"></script>
+  <script src="js/utils/validators.js"></script>
+  <script src="js/utils/calculations.js"></script>
+  <script src="js/utils/dom.js"></script>
+  <script src="js/utils/formatters.js"></script>
+  <script src="js/api/index.js"></script>
+  <script src="js/api/localStorageAdapter.js"></script>
+  <script src="js/api/projectsApi.js"></script>
+  <script src="js/api/clientsApi.js"></script>
+  <script src="js/api/filesApi.js"></script>
+  <script src="js/api/briefApi.js"></script>
+  <script src="js/api/calculatorApi.js"></script>
+  <script src="js/api/avitoApi.js"></script>
+  <script src="js/api/websiteApi.js"></script>
+  <script src="js/api/settingsApi.js"></script>
+  <script src="js/api/knowledgeBaseApi.js"></script>
+  <script src="js/api/statisticsApi.js"></script>
+  <script src="js/state.js"></script>
+  <script src="js/router.js"></script>
+  <script src="js/components/emptyState.js"></script>
+  <script src="js/components/errorState.js"></script>
+  <script src="js/components/statusBadge.js"></script>
+  <script src="js/components/metricCard.js"></script>
+  <script src="js/components/modal.js"></script>
+  <script src="js/components/buttons.js"></script>
+  <script src="js/components/formField.js"></script>
+  <script src="js/components/fileDropzone.js"></script>
+  <script src="js/components/chart.js"></script>
+  <script src="js/models/projectModel.js"></script>
+  <script src="js/models/clientModel.js"></script>
+  <script src="js/models/stageModel.js"></script>
+  <script src="js/models/materialModel.js"></script>
+  <script src="js/models/fileModel.js"></script>
+  <script src="js/models/calculatorModel.js"></script>
+  <script src="js/models/avitoModel.js"></script>
+  <script src="js/models/websiteModel.js"></script>
+  <script src="js/models/reminderModel.js"></script>
+  <script src="js/services/reminderService.js"></script>
+  <script src="js/services/projectStageService.js"></script>
+  <script src="js/services/projectMaterialService.js"></script>
+  <script src="js/services/projectService.js"></script>
+  <script src="js/services/fileService.js"></script>
+  <script src="js/services/briefService.js"></script>
+  <script src="js/services/calculatorService.js"></script>
+  <script src="js/services/exportService.js"></script>
+  <script src="js/services/validationService.js"></script>
+  <script src="js/services/statisticsService.js"></script>
+  <script src="js/services/avitoStatsService.js"></script>
+  <script src="js/services/websiteService.js"></script>
+  <script src="js/views/projectsView.js"></script>
+  <script src="js/views/projectCardView.js"></script>
+  <script src="js/views/briefView.js"></script>
+  <script src="js/views/statisticsView.js"></script>
+  <script src="js/views/calculatorView.js"></script>
+  <script src="js/views/websiteView.js"></script>
+  <script src="js/views/reportsView.js"></script>
+  <script src="js/views/settingsView.js"></script>
+  <script src="js/views/knowledgeBaseView.js"></script>
+  <script src="js/app.js"></script>
+<!-- Code injected by live-server -->
+<script>
+	// <![CDATA[  <-- For SVG support
+	if ('WebSocket' in window) {
+		(function () {
+			function refreshCSS() {
+				var sheets = [].slice.call(document.getElementsByTagName("link"));
+				var head = document.getElementsByTagName("head")[0];
+				for (var i = 0; i < sheets.length; ++i) {
+					var elem = sheets[i];
+					var parent = elem.parentElement || head;
+					parent.removeChild(elem);
+					var rel = elem.rel;
+					if (elem.href && typeof rel != "string" || rel.length == 0 || rel.toLowerCase() == "stylesheet") {
+						var url = elem.href.replace(/(&|\?)_cacheOverride=\d+/, '');
+						elem.href = url + (url.indexOf('?') >= 0 ? '&' : '?') + '_cacheOverride=' + (new Date().valueOf());
+					}
+					parent.appendChild(elem);
+				}
+			}
+			var protocol = window.location.protocol === 'http:' ? 'ws://' : 'wss://';
+			var address = protocol + window.location.host + window.location.pathname + '/ws';
+			var socket = new WebSocket(address);
+			socket.onmessage = function (msg) {
+				if (msg.data == 'reload') window.location.reload();
+				else if (msg.data == 'refreshcss') refreshCSS();
+			};
+			if (sessionStorage && !sessionStorage.getItem('IsThisFirstTime_Log_From_LiveServer')) {
+				console.log('Live reload enabled.');
+				sessionStorage.setItem('IsThisFirstTime_Log_From_LiveServer', true);
+			}
+		})();
+	}
+	else {
+		console.error('Upgrade your browser. This Browser is NOT supported WebSocket for Live-Reloading.');
+	}
+	// ]]>
+</script>
 </body>
 </html>
