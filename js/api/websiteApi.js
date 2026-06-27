@@ -18,6 +18,13 @@
     закрыта: 'closed',
     спам: 'spam'
   };
+  const DEFAULT_WEBSITE_SETTINGS = Object.freeze({
+    source: 'demo',
+    isDemo: true,
+    heroMetric1: 'pageviews',
+    heroMetric2: 'visitors',
+    selectedMetrics: ['leads', 'conversion', 'visitors', 'returnVisitors', 'returnVisits', 'visits', 'pageviews', 'formOpens', 'formErrors', 'scroll']
+  });
 
   function normalizeLeadStatus(status) {
     const value = String(status || '').trim();
@@ -26,6 +33,174 @@
 
   function normalizeLead(lead = {}) {
     return { ...lead, status: normalizeLeadStatus(lead.status) };
+  }
+
+  function isBackendMode() {
+    const config = window.absConfig || {};
+    if (config.dataMode === 'mock') return false;
+    return config.isBackendMode === true || config.dataMode === 'backend';
+  }
+
+  function getApiClient() {
+    if (!window.absApiClient) {
+      throw new Error('absApiClient is not available');
+    }
+    return window.absApiClient;
+  }
+
+  function buildWebsiteQuery(filters = {}) {
+    const query = {
+      from: filters.from ?? filters.dateFrom ?? filters.customFrom ?? undefined,
+      to: filters.to ?? filters.dateTo ?? filters.customTo ?? undefined,
+      source: filters.source ?? undefined,
+      status: filters.status ?? undefined,
+      page: filters.page ?? undefined,
+      limit: filters.limit ?? undefined,
+      offset: filters.offset ?? undefined
+    };
+    return Object.fromEntries(Object.entries(query).filter(([, value]) => value !== undefined && value !== null && value !== ''));
+  }
+
+  function resolveProjectId(input = {}) {
+    const state = window.absState?.get?.() || {};
+    const projectId = input.projectId || state.selectedProjectId;
+    if (!projectId) {
+      throw new Error('projectId is required for backend websiteApi requests');
+    }
+    return String(projectId);
+  }
+
+  function sitePath(projectId, endpoint) {
+    return `/projects/${encodeURIComponent(projectId)}/site/${endpoint}`;
+  }
+
+  async function unwrapBackendResponse(response, fallback = null) {
+    if (response?.ok) return response.data ?? fallback;
+    throw response?.error || { message: 'Website API request failed' };
+  }
+
+  function extractList(payload, key) {
+    if (Array.isArray(payload)) return payload;
+    if (!payload || typeof payload !== 'object') return [];
+    if (Array.isArray(payload[key])) return payload[key];
+    if (Array.isArray(payload.data)) return payload.data;
+    if (payload.data && typeof payload.data === 'object' && Array.isArray(payload.data[key])) return payload.data[key];
+    if (Array.isArray(payload.items)) return payload.items;
+    if (Array.isArray(payload.rows)) return payload.rows;
+    return [];
+  }
+
+  function withBackendSource(row = {}) {
+    return { ...row, source: row.source || 'backend' };
+  }
+
+  function normalizeBackendPage(page = {}) {
+    const slug = page.slug || page.url || page.path || '/';
+    return withBackendSource({
+      ...page,
+      id: page.id || page.pageId || slug,
+      slug,
+      title: page.title || page.name || slug,
+      status: page.status || 'published'
+    });
+  }
+
+  function normalizeBackendPageView(row = {}) {
+    return withBackendSource({
+      ...row,
+      id: row.id || row.pageViewId || row.eventId || '',
+      visitorId: row.visitorId || row.visitor?.id || '',
+      sessionId: row.sessionId || row.session?.id || '',
+      pageUrl: row.pageUrl || row.url || row.path || row.page?.slug || '/',
+      pageTitle: row.pageTitle || row.title || row.page?.title || '',
+      createdAt: row.createdAt || row.viewedAt || row.timestamp || new Date().toISOString()
+    });
+  }
+
+  function normalizeBackendEvent(row = {}) {
+    return withBackendSource({
+      ...row,
+      id: row.id || row.eventId || '',
+      visitorId: row.visitorId || row.visitor?.id || '',
+      sessionId: row.sessionId || row.session?.id || '',
+      eventType: row.eventType || row.type || '',
+      eventName: row.eventName || row.name || row.eventType || row.type || '',
+      pageUrl: row.pageUrl || row.url || row.path || '/',
+      pageTitle: row.pageTitle || row.title || '',
+      createdAt: row.createdAt || row.timestamp || new Date().toISOString()
+    });
+  }
+
+  function normalizeBackendVisitor(row = {}) {
+    return withBackendSource({
+      ...row,
+      id: row.id || row.visitorId || '',
+      visitorId: row.visitorId || row.id || '',
+      firstSeenAt: row.firstSeenAt || row.createdAt || row.startedAt || null,
+      lastSeenAt: row.lastSeenAt || row.updatedAt || row.endedAt || null,
+      visitsCount: Number(row.visitsCount ?? row.visits ?? 0)
+    });
+  }
+
+  function normalizeBackendSession(row = {}) {
+    return withBackendSource({
+      ...row,
+      id: row.id || row.sessionId || '',
+      sessionId: row.sessionId || row.id || '',
+      visitorId: row.visitorId || row.visitor?.id || '',
+      startedAt: row.startedAt || row.createdAt || null,
+      endedAt: row.endedAt || null,
+      durationSeconds: Number(row.durationSeconds ?? row.duration ?? 0),
+      pageViewsCount: Number(row.pageViewsCount ?? row.pageviews ?? row.pageViews ?? 0)
+    });
+  }
+
+  function normalizeBackendError(row = {}) {
+    return withBackendSource({
+      ...row,
+      id: row.id || row.errorId || '',
+      errorType: row.errorType || row.type || '',
+      message: row.message || row.errorMessage || '',
+      pageUrl: row.pageUrl || row.url || row.path || '/',
+      createdAt: row.createdAt || row.timestamp || new Date().toISOString()
+    });
+  }
+
+  function normalizeBackendPerformance(row = {}) {
+    return withBackendSource({
+      ...row,
+      id: row.id || row.performanceId || '',
+      pageUrl: row.pageUrl || row.url || row.path || '/',
+      loadTimeMs: Number(row.loadTimeMs ?? row.loadTime ?? 0),
+      domReadyMs: Number(row.domReadyMs ?? row.domReady ?? 0),
+      createdAt: row.createdAt || row.timestamp || new Date().toISOString()
+    });
+  }
+
+  function normalizeBackendDataset(parts = {}, filters = {}) {
+    const summary = parts.summary || {};
+    const pagesPayload = parts.pages || {};
+    return {
+      filters,
+      websitePageViews: extractList(summary, 'websitePageViews').concat(extractList(summary, 'pageViews')).map(normalizeBackendPageView),
+      websiteVisitors: extractList(parts.visitors, 'visitors').map(normalizeBackendVisitor),
+      websiteSessions: extractList(parts.sessions, 'sessions').map(normalizeBackendSession),
+      websiteEvents: extractList(parts.events, 'events').map(normalizeBackendEvent),
+      websiteErrors: extractList(parts.errors, 'errors').map(normalizeBackendError),
+      websitePages: extractList(pagesPayload, 'pages').map(normalizeBackendPage),
+      websitePagePerformance: extractList(pagesPayload, 'performance').concat(extractList(summary, 'websitePagePerformance')).map(normalizeBackendPerformance),
+      websiteLeads: extractList(parts.leads, 'leads').map(normalizeLead),
+      websiteSources: extractList(parts.sources, 'sources').map(withBackendSource),
+      websiteContentBlocks: extractList(summary, 'websiteContentBlocks').map(withBackendSource),
+      websiteForms: extractList(summary, 'websiteForms').map(withBackendSource),
+      websiteMedia: extractList(summary, 'websiteMedia').map(withBackendSource),
+      websiteSeoSettings: summary.websiteSeoSettings || {},
+      websiteSiteSettings: summary.websiteSiteSettings || {},
+      websiteSettings: getSettings(),
+      websiteSummary: summary,
+      source: 'backend',
+      isDemo: false
+    };
   }
 
   function hasStoredWebsiteData(db) {
@@ -204,13 +379,7 @@
       websiteErrors,
       websitePages,
       websitePagePerformance,
-      websiteSettings: {
-        source: 'demo',
-        isDemo: true,
-        heroMetric1: 'pageviews',
-        heroMetric2: 'visitors',
-        selectedMetrics: ['leads', 'conversion', 'visitors', 'returnVisitors', 'returnVisits', 'visits', 'pageviews', 'formOpens', 'formErrors', 'scroll']
-      },
+      websiteSettings: { ...DEFAULT_WEBSITE_SETTINGS },
       websiteContentBlocks: [
         { id: 'block-hero', pageId: 'page-home', blockId: 'hero', blockType: 'hero', title: 'Hero', content: '', order: 1, isActive: true, createdAt: at(isoDate(today), 8), updatedAt: at(isoDate(today), 8), source: 'demo' },
         { id: 'block-services', pageId: 'page-home', blockId: 'services', blockType: 'services', title: 'Services', content: '', order: 2, isActive: true, createdAt: at(isoDate(today), 8), updatedAt: at(isoDate(today), 8), source: 'demo' },
@@ -228,7 +397,7 @@
 
   function getSettings() {
     const settings = window.settingsApi?.get?.() || {};
-    return { ...(createMockData().websiteSettings), ...(settings.websiteSettings || {}) };
+    return { ...DEFAULT_WEBSITE_SETTINGS, ...(settings.websiteSettings || {}) };
   }
 
   function updateSettings(patch = {}) {
@@ -238,7 +407,7 @@
     return websiteSettings;
   }
 
-  function getDataset() {
+  function getMockDataset() {
     const db = window.localStorageAdapter?.getDatabase?.() || {};
     const mock = createMockData();
     const hasWebsiteData = hasStoredWebsiteData(db);
@@ -262,11 +431,11 @@
     };
   }
 
-  function getStatistics(filters = {}) {
-    return { filters, ...getDataset() };
+  function getMockStatistics(filters = {}) {
+    return { filters, ...getMockDataset() };
   }
 
-  function create(collection, row) {
+  function createMockRow(collection, row) {
     const db = window.localStorageAdapter.getDatabase();
     db[collection] = Array.isArray(db[collection]) ? db[collection] : [];
     const nextRow = { ...row, source: row.source || 'local' };
@@ -279,7 +448,7 @@
     window.dispatchEvent?.(new CustomEvent('website:leads-changed', { detail }));
   }
 
-  function getWritableWebsiteLeads(db) {
+  function getMockWritableWebsiteLeads(db) {
     if (!Array.isArray(db.websiteLeads)) db.websiteLeads = [];
     if (!db.websiteLeads.length && !hasStoredWebsiteData(db)) {
       db.websiteLeads = createMockData().websiteLeads.map(normalizeLead);
@@ -289,9 +458,9 @@
     return db.websiteLeads;
   }
 
-  function postPageView(row) { return create('websitePageViews', row); }
-  function postEvent(row) { return create('websiteEvents', row); }
-  function postLead(row = {}) {
+  function postMockPageView(row) { return createMockRow('websitePageViews', row); }
+  function postMockEvent(row) { return createMockRow('websiteEvents', row); }
+  function postMockLead(row = {}) {
     const payload = { ...row, status: 'new' };
     const lead = window.websiteModel?.createLead
       ? window.websiteModel.createLead(payload)
@@ -301,10 +470,10 @@
           status: 'new',
           createdAt: payload.createdAt || new Date().toISOString(),
           updatedAt: payload.updatedAt || new Date().toISOString()
-        };
+    };
     lead.status = 'new';
     const db = window.localStorageAdapter.getDatabase();
-    const leads = getWritableWebsiteLeads(db);
+    const leads = getMockWritableWebsiteLeads(db);
     const nextLead = { ...lead, source: lead.source || 'local' };
     leads.push(nextLead);
     db.websiteLeads = leads;
@@ -312,14 +481,14 @@
     notifyLeadsChanged({ action: 'created', lead: nextLead });
     return nextLead;
   }
-  function postError(row) { return create('websiteErrors', row); }
-  function postPerformance(row) { return create('websitePagePerformance', row); }
+  function postMockError(row) { return createMockRow('websiteErrors', row); }
+  function postMockPerformance(row) { return createMockRow('websitePagePerformance', row); }
 
-  function updateLeadStatus(leadId, status) {
+  function updateMockLeadStatus(leadId, status) {
     const id = String(leadId || '');
     if (!id) return null;
     const db = window.localStorageAdapter.getDatabase();
-    const leads = getWritableWebsiteLeads(db);
+    const leads = getMockWritableWebsiteLeads(db);
     let updatedLead = null;
     db.websiteLeads = leads.map(lead => {
       if (String(lead.id) !== id) return normalizeLead(lead);
@@ -336,8 +505,8 @@
     return updatedLead;
   }
 
-  function getNewLeadCount() {
-    return getDataset().websiteLeads.filter(lead => normalizeLeadStatus(lead.status) === 'new').length;
+  function getMockNewLeadCount() {
+    return getMockDataset().websiteLeads.filter(lead => normalizeLeadStatus(lead.status) === 'new').length;
   }
 
   function getNotificationSettings() {
@@ -353,14 +522,162 @@
     return website;
   }
 
+  function getBackendResource(endpoint, filters = {}) {
+    return getApiClient()
+      .get(sitePath(resolveProjectId(filters), endpoint), { query: buildWebsiteQuery(filters) })
+      .then(response => unwrapBackendResponse(response, {}));
+  }
+
+  function getBackendList(endpoint, key, filters = {}, normalize = withBackendSource) {
+    return getBackendResource(endpoint, filters)
+      .then(payload => extractList(payload, key).map(normalize));
+  }
+
+  async function getBackendDataset(filters = {}) {
+    const [summary, leads, events, sources, visitors, sessions, pages, errors] = await Promise.all([
+      getBackendResource('summary', filters),
+      getBackendResource('leads', filters),
+      getBackendResource('events', filters),
+      getBackendResource('sources', filters),
+      getBackendResource('visitors', filters),
+      getBackendResource('sessions', filters),
+      getBackendResource('pages', filters),
+      getBackendResource('errors', filters)
+    ]);
+    return normalizeBackendDataset({ summary, leads, events, sources, visitors, sessions, pages, errors }, filters);
+  }
+
+  function getBackendStatistics(filters = {}) {
+    return getBackendDataset(filters);
+  }
+
+  function getBackendNewLeadCount(filters = {}) {
+    return getBackendResource('leads', { ...filters, status: 'new' }).then(payload => {
+      const leads = extractList(payload, 'leads').map(normalizeLead);
+      return Number(payload?.total ?? payload?.count ?? leads.length);
+    });
+  }
+
+  function postBackendLead(row = {}) {
+    const projectId = resolveProjectId(row);
+    const payload = { ...row, status: 'new' };
+    return getApiClient()
+      .post(sitePath(projectId, 'leads'), payload)
+      .then(response => unwrapBackendResponse(response, null))
+      .then(data => {
+        const lead = normalizeLead(data?.lead || data || payload);
+        notifyLeadsChanged({ action: 'created', lead });
+        return lead;
+      });
+  }
+
+  function updateBackendLeadStatus(leadId, status, options = {}) {
+    const id = String(leadId || '');
+    if (!id) return Promise.resolve(null);
+    const projectId = resolveProjectId(options);
+    return getApiClient()
+      .patch(`${sitePath(projectId, 'leads')}/${encodeURIComponent(id)}`, { status: normalizeLeadStatus(status) })
+      .then(response => unwrapBackendResponse(response, null))
+      .then(data => {
+        const lead = data ? normalizeLead(data.lead || data) : null;
+        if (lead) notifyLeadsChanged({ action: 'status-updated', lead });
+        return lead;
+      });
+  }
+
+  function passBackendIngestionRow(row = {}) {
+    return Promise.resolve(withBackendSource(row));
+  }
+
+  const mockWebsiteApi = {
+    createMockData,
+    getAnalytics: getMockStatistics,
+    getDataset: getMockDataset,
+    getLeads: () => getMockDataset().websiteLeads,
+    getNewLeadCount: getMockNewLeadCount,
+    getPages: () => getMockDataset().websitePages,
+    getStatistics: getMockStatistics,
+    postError: postMockError,
+    postEvent: postMockEvent,
+    postLead: postMockLead,
+    postPageView: postMockPageView,
+    postPerformance: postMockPerformance,
+    updateLeadStatus: updateMockLeadStatus
+  };
+
+  const backendWebsiteApi = {
+    createMockData,
+    getAnalytics: getBackendStatistics,
+    getDataset: getBackendDataset,
+    getLeads: filters => getBackendList('leads', 'leads', filters, normalizeLead),
+    getNewLeadCount: getBackendNewLeadCount,
+    getPages: filters => getBackendList('pages', 'pages', filters, normalizeBackendPage),
+    getStatistics: getBackendStatistics,
+    postError: passBackendIngestionRow,
+    postEvent: passBackendIngestionRow,
+    postLead: postBackendLead,
+    postPageView: passBackendIngestionRow,
+    postPerformance: passBackendIngestionRow,
+    updateLeadStatus: updateBackendLeadStatus
+  };
+
+  function getActiveApi() {
+    return isBackendMode() ? backendWebsiteApi : mockWebsiteApi;
+  }
+
+  function getDataset(filters = {}) {
+    return getActiveApi().getDataset(filters);
+  }
+
+  function getStatistics(filters = {}) {
+    return getActiveApi().getStatistics(filters);
+  }
+
+  function getLeads(filters = {}) {
+    return getActiveApi().getLeads(filters);
+  }
+
+  function getPages(filters = {}) {
+    return getActiveApi().getPages(filters);
+  }
+
+  function getNewLeadCount(filters = {}) {
+    return getActiveApi().getNewLeadCount(filters);
+  }
+
+  function postPageView(row) {
+    return getActiveApi().postPageView(row);
+  }
+
+  function postEvent(row) {
+    return getActiveApi().postEvent(row);
+  }
+
+  function postLead(row) {
+    return getActiveApi().postLead(row);
+  }
+
+  function postError(row) {
+    return getActiveApi().postError(row);
+  }
+
+  function postPerformance(row) {
+    return getActiveApi().postPerformance(row);
+  }
+
+  function updateLeadStatus(leadId, status, options = {}) {
+    return getActiveApi().updateLeadStatus(leadId, status, options);
+  }
+
+  window.absApi = window.absApi || {};
   window.websiteApi = {
     createMockData,
     getAnalytics: getStatistics,
     getDataset,
-    getLeads: () => getDataset().websiteLeads,
+    getLeads,
     getNewLeadCount,
     getNotificationSettings,
-    getPages: () => getDataset().websitePages,
+    getPages,
     getSettings,
     getStatistics,
     normalizeLeadStatus,

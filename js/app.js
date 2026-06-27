@@ -163,8 +163,108 @@ function normalizeState(next) {
 }
 
 function sanitizeAvitoApi(data = {}) {
-  const publicKeys = new Set(['connected', 'accountName', 'profileId', 'apiComment', 'lastSyncAt']);
-  return Object.fromEntries(Object.entries(data || {}).filter(([key]) => publicKeys.has(key)));
+  const publicKeys = new Set([
+    'id',
+    'projectId',
+    'accountId',
+    'accountName',
+    'avitoUserId',
+    'profileId',
+    'connected',
+    'status',
+    'lastSyncAt',
+    'syncError',
+    'updatedAt',
+    'apiComment'
+  ]);
+  const forbiddenKeys = /password|secret|token|clientSecret|accessToken|refreshToken/i;
+  const safe = Object.fromEntries(Object.entries(data || {}).filter(([key]) => publicKeys.has(key) && !forbiddenKeys.test(key)));
+  if (safe.avitoUserId && !safe.profileId) safe.profileId = safe.avitoUserId;
+  if (safe.profileId && !safe.avitoUserId) safe.avitoUserId = safe.profileId;
+  return safe;
+}
+
+function toProjectAvitoMirror(projectId, connection = {}, previous = {}) {
+  const avitoUserId = connection.avitoUserId || connection.profileId || previous.avitoUserId || previous.profileId || '';
+  return sanitizeAvitoApi({
+    ...previous,
+    id: connection.id || previous.id || '',
+    projectId: connection.projectId || projectId || previous.projectId || '',
+    accountId: connection.accountId || previous.accountId || '',
+    accountName: connection.accountName || previous.accountName || '',
+    avitoUserId,
+    profileId: avitoUserId,
+    connected: Boolean(connection.connected ?? previous.connected),
+    status: connection.status || previous.status || (connection.connected || previous.connected ? 'active' : 'draft'),
+    lastSyncAt: connection.lastSyncAt || previous.lastSyncAt || null,
+    syncError: connection.syncError || previous.syncError || null,
+    updatedAt: connection.updatedAt || previous.updatedAt || new Date().toISOString(),
+    apiComment: connection.apiComment || previous.apiComment || ''
+  });
+}
+
+function buildAvitoConnectionPayload(project, patch = {}) {
+  const mirror = toProjectAvitoMirror(project.id, { ...project.avitoApi, ...patch }, project.avitoApi);
+  return {
+    id: mirror.id || undefined,
+    projectId: project.id,
+    accountId: mirror.accountId || '',
+    accountName: mirror.accountName || '',
+    avitoUserId: mirror.avitoUserId || mirror.profileId || '',
+    connected: Boolean(mirror.connected),
+    status: mirror.status || (mirror.connected ? 'active' : 'draft'),
+    lastSyncAt: mirror.lastSyncAt || null,
+    syncError: mirror.syncError || null,
+    updatedAt: new Date().toISOString()
+  };
+}
+
+function applyAvitoConnectionMirror(project, connection, extra = {}) {
+  project.avitoApi = toProjectAvitoMirror(project.id, { ...connection, ...extra }, project.avitoApi);
+  project.updatedAt = new Date().toISOString();
+  return project.avitoApi;
+}
+
+function isSameAvitoMirror(left = {}, right = {}) {
+  return JSON.stringify(sanitizeAvitoApi(left)) === JSON.stringify(sanitizeAvitoApi(right));
+}
+
+function hydrateProjectAvitoFromApi(project) {
+  if (!project || !window.avitoApi?.listConnections) return;
+  try {
+    const result = window.avitoApi.listConnections(project.id);
+    if (result && typeof result.then === 'function') {
+      result.then(connections => {
+        const connection = Array.isArray(connections) ? connections[0] : null;
+        if (!connection) return;
+        const nextMirror = toProjectAvitoMirror(project.id, connection, project.avitoApi);
+        if (isSameAvitoMirror(project.avitoApi, nextMirror)) return;
+        applyAvitoConnectionMirror(project, connection);
+        saveState();
+        if (currentView === 'project-card' && activeProjectId === project.id) renderProjectCard();
+      }).catch(error => console.warn('Cannot load Avito connection', error));
+      return;
+    }
+    const connection = Array.isArray(result) ? result[0] : null;
+    if (connection) {
+      const nextMirror = toProjectAvitoMirror(project.id, connection, project.avitoApi);
+      if (!isSameAvitoMirror(project.avitoApi, nextMirror)) {
+        applyAvitoConnectionMirror(project, connection);
+        saveState();
+      }
+    }
+  } catch (error) {
+    console.warn('Cannot load Avito connection', error);
+  }
+}
+
+function collectAvitoFormPatch() {
+  const patch = {};
+  document.querySelectorAll('[data-api-field]').forEach(input => {
+    patch[input.dataset.apiField] = input.value;
+  });
+  if (patch.profileId && !patch.avitoUserId) patch.avitoUserId = patch.profileId;
+  return sanitizeAvitoApi(patch);
 }
 
 function normalizePaymentType(value) {
@@ -279,6 +379,9 @@ function createDemoKnowledge() {
 }
 
 function saveState() {
+  state.projects.forEach(project => {
+    project.avitoApi = sanitizeAvitoApi(project.avitoApi);
+  });
   window.localStorageAdapter?.set?.(STORAGE_KEY, state);
 }
 
@@ -306,28 +409,6 @@ function saveWebsiteNotificationSettings(patch) {
   const next = { ...getWebsiteNotificationSettings(), ...(patch || {}) };
   window.settingsApi?.update?.({ website: next });
   return next;
-}
-
-function getWeatherSettings() {
-  const settings = window.settingsApi?.get?.() || {};
-  return {
-    showSidebarWeather: settings.weather?.showSidebarWeather !== false
-  };
-}
-
-function saveWeatherSettings(patch) {
-  const current = getWeatherSettings();
-  const next = { ...current, ...(patch || {}) };
-  window.settingsApi?.update?.({ weather: next });
-  return next;
-}
-
-function updateSidebarWeatherWidget() {
-  if (getWeatherSettings().showSidebarWeather) {
-    window.weatherWidget?.init?.('sidebarWeatherWidget');
-    return;
-  }
-  window.weatherWidget?.destroy?.('sidebarWeatherWidget');
 }
 
 function getWebsiteNewLeadCount() {
@@ -465,7 +546,6 @@ function render() {
   renderSettings();
   renderKnowledge();
   updateWebsiteNewLeadBadge();
-  requestAnimationFrame(updateSidebarWeatherWidget);
 }
 
 function renderProjects() {
@@ -617,6 +697,7 @@ function renderProjectCard() {
     root.innerHTML = `<div class="empty"><strong>Проект не выбран</strong>Вернись в раздел “Проекты” и выбери или создай проект.</div>`;
     return;
   }
+  hydrateProjectAvitoFromApi(project);
   const activeStages = showAllStages ? project.stages : project.stages.filter(stage => !stage.completed);
   const completedCount = project.stages.filter(stage => stage.completed).length;
   const totalStages = project.stages.length || 1;
@@ -885,17 +966,33 @@ function bindProjectCardEvents(project) {
     accordion?.classList.toggle('open');
     event.currentTarget.textContent = accordion?.classList.contains('open') ? 'Свернуть' : 'Открыть';
   });
-  document.getElementById('saveApiBtn')?.addEventListener('click', () => {
-    document.querySelectorAll('[data-api-field]').forEach(input => { project.avitoApi[input.dataset.apiField] = input.value; });
-    project.avitoApi.updatedAt = new Date().toISOString();
-    saveState();
-    renderProjectCard();
+  document.getElementById('saveApiBtn')?.addEventListener('click', async () => {
+    const patch = collectAvitoFormPatch();
+    const payload = buildAvitoConnectionPayload(project, patch);
+    try {
+      const savedConnection = await Promise.resolve(window.avitoApi?.saveConnection?.(project.id, payload) || payload);
+      applyAvitoConnectionMirror(project, savedConnection || payload, { apiComment: patch.apiComment || '' });
+      saveState();
+      renderProjectCard();
+    } catch (error) {
+      console.warn('Cannot save Avito connection', error);
+    }
   });
-  document.getElementById('mockCheckApiBtn')?.addEventListener('click', () => {
-    project.avitoApi.connected = true;
-    project.avitoApi.lastSyncAt = new Date().toISOString();
-    saveState();
-    renderProjectCard();
+  document.getElementById('mockCheckApiBtn')?.addEventListener('click', async () => {
+    const patch = collectAvitoFormPatch();
+    const payload = buildAvitoConnectionPayload(project, { ...patch, connected: true, status: 'active', lastSyncAt: new Date().toISOString(), syncError: null });
+    try {
+      const savedConnection = await Promise.resolve(window.avitoApi?.saveConnection?.(project.id, payload) || payload);
+      const connectionId = savedConnection?.id || payload.id;
+      const syncedConnection = connectionId && window.avitoApi?.syncConnection
+        ? await Promise.resolve(window.avitoApi.syncConnection(project.id, connectionId))
+        : null;
+      applyAvitoConnectionMirror(project, syncedConnection || savedConnection || payload, { apiComment: patch.apiComment || '' });
+      saveState();
+      renderProjectCard();
+    } catch (error) {
+      console.warn('Cannot connect Avito account', error);
+    }
   });
   document.getElementById('addProjectFiles')?.addEventListener('click', () => createProjectFileInput(project.id));
   const dropzone = document.querySelector('[data-file-dropzone]');
@@ -1369,7 +1466,6 @@ function saveCalculationToProject() {
 function renderSettings() {
   const theme = getUiTheme();
   const websiteNotifications = getWebsiteNotificationSettings();
-  const weatherSettings = getWeatherSettings();
   document.getElementById('view-settings').innerHTML = `
     <div class="page-head"><div><h1>Настройки</h1><p>Оформление интерфейса и базовые настройки ABS.</p></div></div>
     <div class="card">
@@ -1388,16 +1484,12 @@ function renderSettings() {
       <div class="card-head">
         <div>
           <h2>Сайт / Уведомления</h2>
-          <div class="card-subtitle">Счётчик новых заявок и погодный блок в боковом меню.</div>
+          <div class="card-subtitle">Счётчик новых заявок в боковом меню.</div>
         </div>
       </div>
       <label class="settings-toggle">
         <input id="websiteLeadBadgeToggle" type="checkbox" ${websiteNotifications.showNewLeadBadge ? 'checked' : ''}>
         <span>Показывать счётчик новых заявок в меню</span>
-      </label>
-      <label class="settings-toggle">
-        <input id="sidebarWeatherToggle" type="checkbox" ${weatherSettings.showSidebarWeather ? 'checked' : ''}>
-        <span>Показывать погоду в сайдбаре</span>
       </label>
     </div>
     <div class="card">
@@ -1413,10 +1505,6 @@ function renderSettings() {
   document.getElementById('websiteLeadBadgeToggle')?.addEventListener('change', event => {
     saveWebsiteNotificationSettings({ showNewLeadBadge: event.currentTarget.checked });
     updateWebsiteNewLeadBadge();
-  });
-  document.getElementById('sidebarWeatherToggle')?.addEventListener('change', event => {
-    saveWeatherSettings({ showSidebarWeather: event.currentTarget.checked });
-    updateSidebarWeatherWidget();
   });
   document.getElementById('resetDemoState')?.addEventListener('click', () => {
     if (!confirm('Сбросить локальные демо-данные?')) return;
@@ -1583,7 +1671,6 @@ function init() {
   window.addEventListener('website:notification-settings-changed', updateWebsiteNewLeadBadge);
   render();
   requestAnimationFrame(updateWebsiteNewLeadBadge);
-  requestAnimationFrame(updateSidebarWeatherWidget);
 }
 
 window.absApp = {

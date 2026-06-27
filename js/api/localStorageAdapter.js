@@ -41,9 +41,6 @@
         theme: 'light',
         website: {
           showNewLeadBadge: true
-        },
-        weather: {
-          showSidebarWeather: true
         }
       }
     };
@@ -197,18 +194,15 @@
     Object.keys(fallback).forEach(key => {
       if (Array.isArray(fallback[key]) && !Array.isArray(db[key])) db[key] = [];
     });
+    const storedSettings = { ...(db.settings || {}) };
+    delete storedSettings.weather;
     db.settings = {
       ...fallback.settings,
-      ...(db.settings || {}),
+      ...storedSettings,
       website: {
         ...fallback.settings.website,
-        ...((db.settings || {}).website || {}),
-        showNewLeadBadge: (db.settings || {}).website?.showNewLeadBadge !== false
-      },
-      weather: {
-        ...fallback.settings.weather,
-        ...((db.settings || {}).weather || {}),
-        showSidebarWeather: (db.settings || {}).weather?.showSidebarWeather !== false
+        ...(storedSettings.website || {}),
+        showNewLeadBadge: storedSettings.website?.showNewLeadBadge !== false
       }
     };
     const demoProject = db.projects.find(project => project.id === 'demo-project');

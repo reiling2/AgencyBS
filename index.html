@@ -8,10 +8,13 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/main.css" />
+  <link rel="stylesheet" href="css/auth.css" />
   <link rel="stylesheet" href="css/views/website.css" />
 </head>
-<body>
-  <div class="mobile-topbar">
+<body class="auth-locked">
+  <section class="auth-screen" id="authRoot" aria-labelledby="authTitle"></section>
+
+  <div class="mobile-topbar" hidden>
     <button class="icon-btn" id="mobileMenuBtn" aria-label="Открыть меню">☰</button>
     <div>
       <strong>ABS v2</strong>
@@ -19,7 +22,7 @@
     </div>
   </div>
 
-  <div class="app-shell">
+  <div class="app-shell" hidden>
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-main">
         <div class="brand">
@@ -42,8 +45,8 @@
         </nav>
       </div>
 
-      <div class="sidebar-bottom">
-        <div id="sidebarWeatherWidget" class="sidebar-weather-widget" aria-live="polite"></div>
+      <div class="sidebar-auth">
+        <button class="auth-logout-btn" id="authLogoutBtn" type="button">Выйти</button>
       </div>
     </aside>
 
@@ -158,6 +161,7 @@
   </template>
 
   <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+  <script src="js/config.js"></script>
   <script src="js/constants.js"></script>
   <script src="js/utils/storage.js"></script>
   <script src="js/utils/security.js"></script>
@@ -168,6 +172,8 @@
   <script src="js/utils/dom.js"></script>
   <script src="js/utils/formatters.js"></script>
   <script src="js/api/index.js"></script>
+  <script src="js/api/apiClient.js"></script>
+  <script src="js/api/authApi.js"></script>
   <script src="js/api/localStorageAdapter.js"></script>
   <script src="js/api/projectsApi.js"></script>
   <script src="js/api/clientsApi.js"></script>
@@ -179,8 +185,8 @@
   <script src="js/api/settingsApi.js"></script>
   <script src="js/api/knowledgeBaseApi.js"></script>
   <script src="js/api/statisticsApi.js"></script>
-  <script src="js/api/weatherApi.js?v=weather-stable-1"></script>
   <script src="js/state.js"></script>
+  <script src="js/state/authState.js"></script>
   <script src="js/router.js"></script>
   <script src="js/components/emptyState.js"></script>
   <script src="js/components/errorState.js"></script>
@@ -209,12 +215,12 @@
   <script src="js/services/calculatorService.js"></script>
   <script src="js/services/exportService.js"></script>
   <script src="js/services/validationService.js"></script>
+  <script src="js/services/authService.js"></script>
   <script src="js/services/statisticsService.js"></script>
   <script src="js/services/avitoStatsService.js"></script>
   <script src="js/services/websiteStatsService.js"></script>
   <script src="js/services/websiteService.js"></script>
-  <script src="js/services/weatherService.js?v=weather-stable-1"></script>
-  <script src="js/components/weatherWidget.js?v=weather-stable-1"></script>
+  <script src="js/views/authView.js"></script>
   <script src="js/views/projectsView.js"></script>
   <script src="js/views/projectCardView.js"></script>
   <script src="js/views/briefView.js"></script>
@@ -224,6 +230,7 @@
   <script src="js/views/reportsView.js"></script>
   <script src="js/views/settingsView.js"></script>
   <script src="js/views/knowledgeBaseView.js"></script>
-  <script src="js/app.js?v=weather-stable-1"></script>
+  <script src="js/app.js"></script>
+  <script src="js/auth/bootstrapAuth.js"></script>
 </body>
 </html>

@@ -67,6 +67,45 @@
     return JSON.parse(JSON.stringify(value));
   }
 
+  function isBackendMode() {
+    const config = window.absConfig || {};
+    if (config.dataMode === 'mock') return false;
+    return config.isBackendMode === true || config.dataMode === 'backend';
+  }
+
+  function getApiClient() {
+    if (!window.absApiClient) {
+      throw new Error('absApiClient is not available');
+    }
+    return window.absApiClient;
+  }
+
+  function buildStatisticsQuery(filters = {}) {
+    const query = {
+      projectId: filters.projectId && filters.projectId !== 'all' ? filters.projectId : undefined,
+      from: filters.from ?? filters.dateFrom ?? undefined,
+      to: filters.to ?? filters.dateTo ?? undefined,
+      source: filters.source ?? undefined,
+      accountId: filters.accountId ?? undefined,
+      limit: filters.limit ?? undefined,
+      offset: filters.offset ?? undefined
+    };
+    return Object.fromEntries(Object.entries(query).filter(([, value]) => value !== undefined && value !== null && value !== ''));
+  }
+
+  function statisticsPath(endpoint) {
+    return `/statistics/${endpoint}`;
+  }
+
+  function projectStatisticsPath(projectId, endpoint) {
+    return `/projects/${encodeURIComponent(projectId)}/statistics/${endpoint}`;
+  }
+
+  async function unwrapBackendResponse(response, fallback = null) {
+    if (response?.ok) return response.data ?? fallback;
+    throw response?.error || { message: 'Statistics API request failed' };
+  }
+
   function readWorkspaceProjects() {
     try {
       if (window.projectsApi?.list) return window.projectsApi.list();
@@ -173,7 +212,7 @@
     };
   }
 
-  function getProjects() {
+  function getMockProjects() {
     return getAllProjectStats().map(project => ({
       id: project.id,
       name: project.name,
@@ -184,7 +223,7 @@
     }));
   }
 
-  function getStats(filters = {}) {
+  function getMockStats(filters = {}) {
     const projectId = filters.projectId || 'all';
     const dateFrom = filters.dateFrom || '';
     const dateTo = filters.dateTo || '';
@@ -204,6 +243,143 @@
 
   function getAvailableMetrics() {
     return clone(METRICS);
+  }
+
+  function normalizeBackendAccount(account = {}) {
+    return {
+      id: account.id || account.accountId || '',
+      name: account.name || account.accountName || '',
+      connected: account.connected !== false,
+      lastSyncAt: account.lastSyncAt || null
+    };
+  }
+
+  function normalizeBackendDailyStats(rows = []) {
+    return (Array.isArray(rows) ? rows : []).map(row => ({
+      date: row.date || String(row.createdAt || '').slice(0, 10),
+      spent: Number(row.spent ?? row.budget ?? row.cost ?? 0),
+      views: Number(row.views || 0),
+      chats: Number(row.chats || 0),
+      calls: Number(row.calls || 0),
+      favorites: Number(row.favorites || 0)
+    })).filter(row => row.date);
+  }
+
+  function normalizeBackendProject(project = {}, index = 0, dailyByProject = new Map()) {
+    const id = project.id || project.projectId || `backend-project-${index + 1}`;
+    const account = normalizeBackendAccount(project.account || { id: project.accountId, name: project.accountName });
+    const finance = project.finance || {};
+    const metrics = project.metrics || {};
+    const dailyStats = project.dailyStats || project.daily || dailyByProject.get(id) || [];
+
+    return {
+      id,
+      name: project.name || project.title || `Проект ${index + 1}`,
+      title: project.title || project.name || `Проект ${index + 1}`,
+      niche: project.niche || '',
+      status: project.status || 'В работе',
+      account,
+      finance: {
+        walletBalance: Number(finance.walletBalance ?? project.walletBalance ?? project.wallet ?? 0),
+        clientAdvance: Number(finance.clientAdvance ?? project.clientAdvance ?? project.advance ?? 0)
+      },
+      metrics: {
+        adsCount: Number(metrics.adsCount ?? project.adsCount ?? project.ads ?? 0)
+      },
+      leadSources: Array.isArray(project.leadSources) ? project.leadSources : [
+        { key: 'chats', label: 'Чаты' },
+        { key: 'calls', label: 'Звонки' },
+        { key: 'favorites', label: 'Избранное' }
+      ],
+      dailyStats: normalizeBackendDailyStats(dailyStats)
+    };
+  }
+
+  function normalizeBackendStatsPayload(summaryPayload = {}, dailyPayload = {}, filters = {}) {
+    const projectId = filters.projectId || 'all';
+    const dateFrom = filters.from || filters.dateFrom || '';
+    const dateTo = filters.to || filters.dateTo || '';
+    const summaryProjects = Array.isArray(summaryPayload?.projects)
+      ? summaryPayload.projects
+      : (summaryPayload?.project ? [summaryPayload.project] : []);
+    const dailyProjects = Array.isArray(dailyPayload?.projects)
+      ? dailyPayload.projects
+      : [];
+    const dailyRows = Array.isArray(dailyPayload)
+      ? dailyPayload
+      : (Array.isArray(dailyPayload?.dailyStats) ? dailyPayload.dailyStats : []);
+    const dailyByProject = new Map();
+
+    dailyProjects.forEach(project => {
+      const id = project.id || project.projectId;
+      if (id) dailyByProject.set(id, project.dailyStats || project.daily || []);
+    });
+    dailyRows.forEach(row => {
+      const id = row.projectId || projectId;
+      if (!id || id === 'all') return;
+      const rows = dailyByProject.get(id) || [];
+      rows.push(row);
+      dailyByProject.set(id, rows);
+    });
+
+    const projectsSource = summaryProjects.length
+      ? summaryProjects
+      : [...dailyByProject.entries()].map(([id, rows]) => ({ id, projectId: id, dailyStats: rows }));
+
+    return {
+      avitoConnected: summaryPayload?.avitoConnected !== false,
+      accounts: Array.isArray(summaryPayload?.accounts) ? summaryPayload.accounts.map(normalizeBackendAccount) : [],
+      generatedAt: summaryPayload?.generatedAt || dailyPayload?.generatedAt || new Date().toISOString(),
+      filters: { projectId, dateFrom, dateTo },
+      projects: projectsSource.map((project, index) => normalizeBackendProject(project, index, dailyByProject))
+    };
+  }
+
+  const mockStatisticsApi = {
+    exportStats(filters = {}) {
+      return getMockStats(filters);
+    },
+    getAvailableMetrics,
+    getProjects: getMockProjects,
+    getStats: getMockStats
+  };
+
+  const backendStatisticsApi = {
+    async exportStats(filters = {}) {
+      return backendStatisticsApi.getStats(filters);
+    },
+    getAvailableMetrics,
+    async getProjects(filters = {}) {
+      const data = await unwrapBackendResponse(await getApiClient().get(statisticsPath('projects'), { query: buildStatisticsQuery(filters) }), []);
+      const rows = Array.isArray(data) ? data : (Array.isArray(data?.projects) ? data.projects : []);
+      return rows.map((project, index) => {
+        const normalized = normalizeBackendProject(project, index);
+        return {
+          id: normalized.id,
+          name: normalized.name,
+          title: normalized.title,
+          status: normalized.status,
+          niche: normalized.niche,
+          accountId: normalized.account.id
+        };
+      });
+    },
+    async getStats(filters = {}) {
+      const query = buildStatisticsQuery(filters);
+      const projectId = filters.projectId || 'all';
+      const useProjectEndpoint = projectId && projectId !== 'all';
+      const summaryPath = useProjectEndpoint ? projectStatisticsPath(projectId, 'summary') : statisticsPath('summary');
+      const dailyPath = useProjectEndpoint ? projectStatisticsPath(projectId, 'daily') : statisticsPath('daily');
+      const [summaryPayload, dailyPayload] = await Promise.all([
+        getApiClient().get(summaryPath, { query }).then(response => unwrapBackendResponse(response, {})),
+        getApiClient().get(dailyPath, { query }).then(response => unwrapBackendResponse(response, {}))
+      ]);
+      return normalizeBackendStatsPayload(summaryPayload, dailyPayload, filters);
+    }
+  };
+
+  function getActiveApi() {
+    return isBackendMode() ? backendStatisticsApi : mockStatisticsApi;
   }
 
   function getMetricSettings() {
@@ -235,8 +411,16 @@
     return filters || {};
   }
 
+  function getProjects(filters = {}) {
+    return getActiveApi().getProjects(filters);
+  }
+
+  function getStats(filters = {}) {
+    return getActiveApi().getStats(filters);
+  }
+
   function exportStats(filters = {}) {
-    return getStats(filters);
+    return getActiveApi().exportStats(filters);
   }
 
   window.statisticsApi = {
